@@ -7,124 +7,76 @@ import {
   CheckCircle2,
   FileText,
   Mail,
-  MapPin,
   Phone,
   ShieldCheck,
-  Upload,
   User,
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
-import { getPublicJobs } from "../data/jobs"
+import { getPublicBackendJob, submitJobApplication } from "../services/api"
 
 function Apply() {
   const { id } = useParams()
   const navigate = useNavigate()
 
-  const job = getPublicJobs().find((item) => String(item.id) === String(id))
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
-  const savedProfile = JSON.parse(localStorage.getItem("jobSeekerProfile") || "{}")
+  const profile = currentUser.jobSeekerProfile || {}
 
+  const [job, setJob] = useState(null)
+  const [loadingJob, setLoadingJob] = useState(true)
+  const [jobError, setJobError] = useState("")
+  const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [alreadyApplied, setAlreadyApplied] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    if (!job) return
+    async function loadJob() {
+      try {
+        setLoadingJob(true)
+        setJobError("")
 
-    const applications = JSON.parse(localStorage.getItem("applications") || "[]")
-
-    const existingApplication = applications.some(
-      (application) =>
-        String(application.jobId) === String(job.id) &&
-        application.email === currentUser.email
-    )
-
-    setAlreadyApplied(existingApplication)
-    setSubmitted(existingApplication)
-  }, [job, currentUser.email])
-
-  function handleSubmitApplication(event) {
-    event.preventDefault()
-
-    if (!job) return
-
-    const applications = JSON.parse(localStorage.getItem("applications") || "[]")
-
-    const existingApplication = applications.some(
-      (application) =>
-        String(application.jobId) === String(job.id) &&
-        application.email === currentUser.email
-    )
-
-    if (existingApplication) {
-      setAlreadyApplied(true)
-      setSubmitted(true)
-      return
+        const response = await getPublicBackendJob(id)
+        setJob(response.job)
+      } catch (error) {
+        setJobError(error.message || "Failed to load job")
+      } finally {
+        setLoadingJob(false)
+      }
     }
+
+    loadJob()
+  }, [id])
+
+  async function handleApplication(event) {
+    event.preventDefault()
 
     const formData = new FormData(event.target)
     const cvFile = formData.get("cvFile")
 
-    const newApplication = {
-      id: Date.now(),
-      jobId: job.id,
-      jobTitle: job.title,
-      company: job.company,
-      location: job.location,
-      category: job.category,
-      applicantName: formData.get("applicantName"),
+    const applicationData = {
+      fullName: formData.get("fullName"),
       email: formData.get("email"),
       phone: formData.get("phone"),
+      cvFileName: cvFile?.name || "",
       coverNote: formData.get("coverNote"),
-      cvFileName: cvFile?.name || savedProfile.cvFileName || "No CV uploaded",
-      status: "Submitted",
-      submittedAt: new Date().toLocaleDateString("en-GB"),
     }
 
-    localStorage.setItem(
-      "applications",
-      JSON.stringify([newApplication, ...applications])
-    )
+    try {
+      setLoading(true)
+      setError("")
 
-    setSubmitted(true)
+      await submitJobApplication(id, applicationData)
 
-    setTimeout(() => {
-      navigate("/dashboard")
-    }, 1200)
-  }
+      setSubmitted(true)
 
-  if (!job) {
-    return (
-      <main className="min-h-screen bg-zinc-950 text-white">
-        <Navbar />
-
-        <section className="px-6 py-20">
-          <div className="mx-auto max-w-5xl">
-            <div className="rounded-[2rem] border border-white/10 bg-white/5 p-10 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-400 text-zinc-950">
-                <AlertTriangle size={32} />
-              </div>
-
-              <h1 className="mt-6 text-4xl font-extrabold">Job not found</h1>
-
-              <p className="mt-4 text-zinc-400">
-                The job you are trying to apply for does not exist.
-              </p>
-
-              <Link
-                to="/jobs"
-                className="mt-8 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-7 py-3 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
-              >
-                Back to Jobs
-                <ArrowRight size={17} />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        <Footer />
-      </main>
-    )
+      setTimeout(() => {
+        navigate("/dashboard")
+      }, 1400)
+    } catch (error) {
+      setError(error.message || "Failed to submit application")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -137,268 +89,303 @@ function Apply() {
 
         <div className="relative mx-auto max-w-7xl">
           <Link
-            to={`/jobs/${job.id}`}
+            to={`/jobs/${id}`}
             className="inline-flex items-center gap-2 text-sm font-bold text-teal-300 hover:text-teal-200"
           >
             ← Back to Job Details
           </Link>
 
-          <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_380px]">
-            <div>
-              <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl shadow-teal-500/10 md:p-10">
-                <p className="inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-sm font-bold text-teal-300">
-                  <ShieldCheck size={16} />
-                  Secure application
-                </p>
+          {loadingJob && (
+            <div className="mt-10 rounded-[2rem] border border-white/10 bg-white/5 p-10 text-center">
+              <p className="text-sm font-bold text-teal-300">
+                Loading application page...
+              </p>
+            </div>
+          )}
 
-                <h1 className="mt-6 text-5xl font-extrabold tracking-tight md:text-6xl">
-                  Apply for {job.title}
-                </h1>
+          {jobError && (
+            <div className="mt-10 rounded-[2rem] border border-red-400/20 bg-red-400/10 p-10 text-center">
+              <AlertTriangle size={40} className="mx-auto text-red-300" />
 
-                <p className="mt-5 text-xl font-semibold text-zinc-300">
-                  {job.company}
-                </p>
+              <h1 className="mt-5 text-3xl font-extrabold text-red-300">
+                Job not available
+              </h1>
 
-                <div className="mt-6 flex flex-wrap gap-4 text-sm text-zinc-400">
-                  <span className="inline-flex items-center gap-2">
-                    <MapPin size={17} className="text-teal-300" />
-                    {job.location}
-                  </span>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-zinc-300">
+                {jobError}
+              </p>
 
-                  <span className="inline-flex items-center gap-2">
-                    <BriefcaseBusiness size={17} className="text-yellow-300" />
-                    {job.type}
-                  </span>
+              <Link
+                to="/jobs"
+                className="mt-8 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-7 py-3 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
+              >
+                Browse Jobs
+                <ArrowRight size={17} />
+              </Link>
+            </div>
+          )}
 
-                  <span className="inline-flex items-center gap-2">
-                    <FileText size={17} className="text-emerald-300" />
-                    {job.category}
-                  </span>
+          {!loadingJob && !jobError && job && (
+            <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_390px] lg:items-start">
+              <div>
+                <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl shadow-teal-500/10 md:p-10">
+                  <p className="inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-sm font-bold text-teal-300">
+                    <BriefcaseBusiness size={16} />
+                    Job Application
+                  </p>
+
+                  <h1 className="mt-6 text-5xl font-extrabold tracking-tight md:text-6xl">
+                    Apply for {job.title}
+                  </h1>
+
+                  <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-400">
+                    Submit your application for{" "}
+                    <span className="font-bold text-white">{job.company}</span>.
+                    Your application will be saved in the backend database.
+                  </p>
                 </div>
-              </div>
 
-              {submitted && (
-                <div className="mt-8 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-6">
-                  <h2 className="flex items-center gap-2 text-2xl font-extrabold text-emerald-300">
-                    <CheckCircle2 size={24} />
-                    {alreadyApplied
-                      ? "You have already applied for this job."
-                      : "Application submitted successfully."}
+                {submitted && (
+                  <div className="mt-8 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-6">
+                    <h2 className="flex items-center gap-2 text-2xl font-extrabold text-emerald-300">
+                      <CheckCircle2 size={24} />
+                      Application submitted successfully.
+                    </h2>
+
+                    <p className="mt-3 text-sm leading-7 text-zinc-300">
+                      Your application has been saved in the Prisma database. You will be
+                      redirected to your dashboard shortly.
+                    </p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="mt-8 rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
+                    <h2 className="font-extrabold text-red-300">
+                      Application failed
+                    </h2>
+
+                    <p className="mt-3 text-sm leading-7 text-zinc-300">{error}</p>
+                  </div>
+                )}
+
+                <form
+                  onSubmit={handleApplication}
+                  className="mt-8 rounded-[2rem] border border-white/10 bg-white/5 p-8"
+                >
+                  <h2 className="text-3xl font-extrabold">
+                    Applicant Information
                   </h2>
 
-                  <p className="mt-3 text-sm leading-7 text-zinc-300">
-                    Your application is saved under your Job Seeker Dashboard. Employers
-                    can review it and update the status.
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">
+                    Please use accurate details. Employers will use these details to
+                    contact you if shortlisted.
                   </p>
-                </div>
-              )}
 
-              <form
-                onSubmit={handleSubmitApplication}
-                className="mt-8 rounded-[2rem] border border-white/10 bg-white/5 p-8"
-              >
-                <h2 className="text-3xl font-extrabold">Applicant Details</h2>
+                  <div className="mt-8 grid gap-5 md:grid-cols-2">
+                    <InputField
+                      icon={User}
+                      label="Full Name"
+                      name="fullName"
+                      defaultValue={
+                        profile.fullName ||
+                        currentUser.displayName ||
+                        currentUser.name ||
+                        ""
+                      }
+                      placeholder="Enter your full name"
+                      required
+                    />
 
-                <p className="mt-3 text-sm leading-6 text-zinc-400">
-                  Confirm your details before submitting. This information will be shared
-                  with the employer for this application.
-                </p>
+                    <InputField
+                      icon={Mail}
+                      label="Email Address"
+                      name="email"
+                      type="email"
+                      defaultValue={currentUser.email || ""}
+                      placeholder="Enter your email"
+                      required
+                    />
 
-                <div className="mt-8 grid gap-5 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-bold text-zinc-300">
-                      Full Name
-                    </label>
-
-                    <div className="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-4">
-                      <User size={19} className="text-teal-300" />
-
-                      <input
-                        name="applicantName"
-                        type="text"
-                        required
-                        defaultValue={
-                          savedProfile.fullName ||
-                          currentUser.displayName ||
-                          `${currentUser.firstName || ""} ${
-                            currentUser.lastName || ""
-                          }`.trim()
-                        }
-                        placeholder="Enter full name"
-                        className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-bold text-zinc-300">
-                      Email Address
-                    </label>
-
-                    <div className="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-4">
-                      <Mail size={19} className="text-yellow-300" />
-
-                      <input
-                        name="email"
-                        type="email"
-                        required
-                        defaultValue={savedProfile.email || currentUser.email || ""}
-                        placeholder="you@example.com"
-                        className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-bold text-zinc-300">
-                      Phone Number
-                    </label>
-
-                    <div className="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-4">
-                      <Phone size={19} className="text-emerald-300" />
-
-                      <input
+                    <div className="md:col-span-2">
+                      <InputField
+                        icon={Phone}
+                        label="Phone Number"
                         name="phone"
-                        type="tel"
-                        required
-                        defaultValue={savedProfile.phone || currentUser.phone || ""}
+                        defaultValue={profile.phone || currentUser.phone || ""}
                         placeholder="e.g. +260..."
-                        className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
                       />
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-6">
-                  <label className="text-sm font-bold text-zinc-300">
-                    Cover Note
-                  </label>
+                  <div className="mt-8">
+                    <label className="text-sm font-bold text-zinc-300">
+                      Upload CV
+                    </label>
 
-                  <textarea
-                    name="coverNote"
-                    rows="6"
-                    defaultValue={savedProfile.careerSummary || ""}
-                    placeholder="Briefly explain why you are suitable for this job."
-                    className="mt-2 w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-4 text-sm leading-7 text-white outline-none placeholder:text-zinc-500 focus:border-teal-400"
-                  ></textarea>
-                </div>
+                    <div className="mt-2 rounded-2xl border border-dashed border-white/20 bg-zinc-950 p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-500 text-zinc-950">
+                          <FileText size={24} />
+                        </div>
 
-                <div className="mt-6">
-                  <label className="text-sm font-bold text-zinc-300">
-                    Upload CV
-                  </label>
+                        <div className="w-full">
+                          <input
+                            type="file"
+                            name="cvFile"
+                            accept=".pdf,.doc,.docx"
+                            className="w-full text-sm text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-yellow-400 file:px-5 file:py-2 file:text-sm file:font-bold file:text-zinc-950 hover:file:bg-yellow-300"
+                          />
 
-                  <div className="mt-2 rounded-2xl border border-dashed border-white/20 bg-zinc-950 p-6">
-                    <div className="flex flex-col items-center justify-center text-center">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-500 text-zinc-950">
-                        <Upload size={28} />
+                          <p className="mt-3 text-xs leading-5 text-zinc-500">
+                            For now, only the CV file name is saved. Actual file upload
+                            storage will be added later.
+                          </p>
+                        </div>
                       </div>
-
-                      <p className="mt-4 text-sm font-bold text-white">
-                        Upload your CV
-                      </p>
-
-                      <p className="mt-2 text-xs leading-5 text-zinc-500">
-                        Front-end stores the CV file name only for now. Backend will handle
-                        real uploads later.
-                      </p>
-
-                      <input
-                        name="cvFile"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        className="mt-5 w-full max-w-sm rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300 outline-none focus:border-teal-400"
-                      />
-
-                      <p className="mt-3 text-xs text-zinc-500">
-                        Saved CV: {savedProfile.cvFileName || "No CV uploaded yet"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 rounded-2xl border border-red-400/20 bg-red-400/10 p-5">
-                  <h3 className="font-bold text-red-300">Safety reminder</h3>
-
-                  <p className="mt-2 text-sm leading-6 text-zinc-300">
-                    Do not pay any registration, application, interview, medical, or
-                    recruitment fee. TrueHire Global applications are free for job seekers.
-                  </p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitted}
-                  className={`mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-extrabold ${
-                    submitted
-                      ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
-                      : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
-                  }`}
-                >
-                  {submitted ? "Application Submitted" : "Submit Application"}
-                  {!submitted && <ArrowRight size={17} />}
-                </button>
-              </form>
-            </div>
-
-            <aside className="lg:sticky lg:top-28 lg:h-fit">
-              <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-teal-500/10">
-                <div className="rounded-[1.5rem] border border-white/10 bg-zinc-950 p-6">
-                  <h2 className="text-2xl font-extrabold">Application Summary</h2>
-
-                  <div className="mt-6 space-y-4">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm text-zinc-500">Job Title</p>
-                      <p className="mt-1 font-bold text-white">{job.title}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm text-zinc-500">Company</p>
-                      <p className="mt-1 font-bold text-white">{job.company}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm text-zinc-500">Location</p>
-                      <p className="mt-1 font-bold text-white">{job.location}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm text-zinc-500">Deadline</p>
-                      <p className="mt-1 font-bold text-yellow-300">
-                        {job.deadline || "Not specified"}
-                      </p>
                     </div>
                   </div>
 
-                  <div className="mt-8 rounded-2xl border border-teal-400/20 bg-teal-400/10 p-5">
-                    <h3 className="font-bold text-teal-300">
-                      What happens next?
+                  <div className="mt-8">
+                    <label className="text-sm font-bold text-zinc-300">
+                      Cover Note
+                    </label>
+
+                    <textarea
+                      name="coverNote"
+                      rows="7"
+                      placeholder="Briefly explain why you are suitable for this role."
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-4 text-sm leading-7 text-white outline-none placeholder:text-zinc-500 focus:border-teal-400"
+                    ></textarea>
+                  </div>
+
+                  <div className="mt-8 rounded-2xl border border-red-400/20 bg-red-400/10 p-5">
+                    <h3 className="flex items-center gap-2 font-bold text-red-300">
+                      <AlertTriangle size={20} />
+                      Safety Reminder
                     </h3>
 
-                    <div className="mt-4 space-y-3 text-sm leading-6 text-zinc-300">
-                      <p>✓ Your application is saved.</p>
-                      <p>✓ The employer can review it.</p>
-                      <p>✓ Your dashboard shows status updates.</p>
-                      <p>✓ You may receive notifications.</p>
+                    <p className="mt-2 text-sm leading-6 text-zinc-300">
+                      Do not pay any money for this application. TrueHire Global does not
+                      support application fees, registration fees, interview fees, medical
+                      fees, or recruitment payments.
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitted || loading}
+                    className={`mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-extrabold ${
+                      submitted || loading
+                        ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                        : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
+                    }`}
+                  >
+                    {loading
+                      ? "Submitting Application..."
+                      : submitted
+                      ? "Application Submitted"
+                      : "Submit Application"}
+
+                    {!submitted && !loading && <ArrowRight size={17} />}
+                  </button>
+                </form>
+              </div>
+
+              <aside className="lg:sticky lg:top-28 lg:h-fit">
+                <div className="space-y-6">
+                  <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-teal-500/10">
+                    <div className="rounded-[1.5rem] border border-teal-400/20 bg-teal-400/10 p-6">
+                      <ShieldCheck size={34} className="text-teal-300" />
+
+                      <h2 className="mt-5 text-2xl font-extrabold">
+                        Approved Job
+                      </h2>
+
+                      <p className="mt-3 text-sm leading-7 text-zinc-300">
+                        This job is visible because it was approved by admin.
+                      </p>
                     </div>
                   </div>
 
-                  <Link
-                    to="/dashboard"
-                    className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-400/40 px-5 py-4 text-sm font-bold text-teal-300 hover:bg-teal-500 hover:text-zinc-950"
-                  >
-                    View Dashboard
-                    <ArrowRight size={17} />
-                  </Link>
+                  <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+                    <h2 className="text-2xl font-extrabold">Job Summary</h2>
+
+                    <div className="mt-5 space-y-4 text-sm text-zinc-300">
+                      <SummaryItem label="Title" value={job.title} />
+                      <SummaryItem label="Company" value={job.company} />
+                      <SummaryItem label="Location" value={job.location} />
+                      <SummaryItem label="Type" value={job.type} />
+                      <SummaryItem label="Category" value={job.category} />
+                      <SummaryItem label="Deadline" value={job.deadline} />
+                    </div>
+                  </div>
+
+                  <div className="rounded-[2rem] border border-yellow-400/20 bg-yellow-400/10 p-6">
+                    <h2 className="text-2xl font-extrabold text-yellow-300">
+                      Application Status
+                    </h2>
+
+                    <p className="mt-3 text-sm leading-7 text-zinc-300">
+                      After submission, your application status will start as:
+                    </p>
+
+                    <p className="mt-5 rounded-full bg-zinc-950 px-4 py-2 text-center text-sm font-bold text-yellow-300">
+                      Submitted
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </aside>
-          </div>
+              </aside>
+            </div>
+          )}
         </div>
       </section>
 
       <Footer />
     </main>
+  )
+}
+
+function InputField({
+  icon: Icon,
+  label,
+  name,
+  type = "text",
+  placeholder,
+  defaultValue = "",
+  required = false,
+}) {
+  return (
+    <div>
+      <label className="text-sm font-bold text-zinc-300">{label}</label>
+
+      <div className="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-4">
+        <Icon size={19} className="text-teal-300" />
+
+        <input
+          name={name}
+          type={type}
+          required={required}
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
+        />
+      </div>
+    </div>
+  )
+}
+
+function SummaryItem({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+        {label}
+      </p>
+
+      <p className="mt-2 text-sm font-bold text-white">
+        {value || "Not specified"}
+      </p>
+    </div>
   )
 }
 

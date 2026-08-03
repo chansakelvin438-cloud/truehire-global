@@ -5,108 +5,86 @@ import {
   ArrowRight,
   BadgeCheck,
   BriefcaseBusiness,
+  Building2,
   CalendarDays,
   CheckCircle2,
   Clock,
+  Heart,
+  Mail,
   MapPin,
+  Phone,
   ShieldCheck,
-  Star,
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
-import { getPublicJobs } from "../data/jobs"
+import { getPublicBackendJob } from "../services/api"
 
 function JobDetails() {
   const { id } = useParams()
-  const publicJobs = getPublicJobs()
-  const job = publicJobs.find((item) => String(item.id) === String(id))
 
-  const [isSaved, setIsSaved] = useState(false)
+  const [job, setJob] = useState(null)
+  const [loadingJob, setLoadingJob] = useState(true)
+  const [jobError, setJobError] = useState("")
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    if (!job) return
+    async function loadJobDetails() {
+      try {
+        setLoadingJob(true)
+        setJobError("")
 
-    const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
+        const response = await getPublicBackendJob(id)
+        setJob(response.job)
 
-    const jobIsSaved = savedJobs.some(
-      (savedJobId) => String(savedJobId) === String(job.id)
-    )
+        const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
+        const isAlreadySaved = savedJobs.some((savedJob) => {
+          if (typeof savedJob === "string") return savedJob === id
+          return savedJob.id === id
+        })
 
-    setIsSaved(jobIsSaved)
-  }, [job])
-
-  function toggleSaveJob() {
-    if (!job) return
-
-    const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
-
-    const jobIsSaved = savedJobs.some(
-      (savedJobId) => String(savedJobId) === String(job.id)
-    )
-
-    let updatedSavedJobs
-
-    if (jobIsSaved) {
-      updatedSavedJobs = savedJobs.filter(
-        (savedJobId) => String(savedJobId) !== String(job.id)
-      )
-      setIsSaved(false)
-    } else {
-      updatedSavedJobs = [...savedJobs, job.id]
-      setIsSaved(true)
+        setSaved(isAlreadySaved)
+      } catch (error) {
+        setJobError(error.message || "Failed to load job details")
+      } finally {
+        setLoadingJob(false)
+      }
     }
 
+    loadJobDetails()
+  }, [id])
+
+  function handleSaveJob() {
+    if (!job) return
+
+    const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
+
+    const isAlreadySaved = savedJobs.some((savedJob) => {
+      if (typeof savedJob === "string") return savedJob === job.id
+      return savedJob.id === job.id
+    })
+
+    if (isAlreadySaved) {
+      setSaved(true)
+      return
+    }
+
+    const updatedSavedJobs = [
+      ...savedJobs,
+      {
+        id: job.id,
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        category: job.category,
+        type: job.type,
+        salary: job.salary,
+        savedAt: new Date().toISOString(),
+      },
+    ]
+
     localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+    setSaved(true)
   }
-
-  if (!job) {
-    return (
-      <main className="min-h-screen bg-zinc-950 text-white">
-        <Navbar />
-
-        <section className="px-6 py-20">
-          <div className="mx-auto max-w-7xl">
-            <div className="rounded-[2rem] border border-white/10 bg-white/5 p-10 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-400 text-zinc-950">
-                <AlertTriangle size={32} />
-              </div>
-
-              <h1 className="mt-6 text-4xl font-extrabold">Job not found</h1>
-
-              <p className="mx-auto mt-4 max-w-xl text-zinc-400">
-                The job you are looking for does not exist or may have been removed.
-              </p>
-
-              <Link
-                to="/jobs"
-                className="mt-8 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-7 py-3 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
-              >
-                Back to Jobs
-                <ArrowRight size={17} />
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        <Footer />
-      </main>
-    )
-  }
-
-  const responsibilities = Array.isArray(job.responsibilities)
-    ? job.responsibilities
-    : ["Responsibilities will be confirmed by the employer."]
-
-  const requirements = Array.isArray(job.requirements)
-    ? job.requirements
-    : typeof job.requirements === "string"
-    ? job.requirements
-        .split("\n")
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : ["Requirements will be confirmed by the employer."]
-
-  const isHighlyVerified = job.trustBadge === "Highly Verified Employer"
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
@@ -124,244 +102,234 @@ function JobDetails() {
             ← Back to Jobs
           </Link>
 
-          <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_380px]">
-            <div>
-              <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl shadow-teal-500/10 md:p-10">
-                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-start">
-                  <div>
-                    <div className="flex flex-wrap gap-3">
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
-                          isHighlyVerified
-                            ? "border border-yellow-400/30 bg-yellow-400/10 text-yellow-300"
-                            : "border border-teal-400/30 bg-teal-400/10 text-teal-300"
-                        }`}
-                      >
-                        <ShieldCheck size={16} />
-                        {job.trustBadge || "Verified Employer"}
-                      </span>
+          {loadingJob && (
+            <div className="mt-10 rounded-[2rem] border border-white/10 bg-white/5 p-10 text-center">
+              <p className="text-sm font-bold text-teal-300">
+                Loading job details...
+              </p>
+            </div>
+          )}
 
-                      {job.source === "employer-submitted" && (
-                        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm font-bold text-emerald-300">
-                          <BadgeCheck size={16} />
-                          Admin Approved
-                        </span>
-                      )}
-                    </div>
+          {jobError && (
+            <div className="mt-10 rounded-[2rem] border border-red-400/20 bg-red-400/10 p-10 text-center">
+              <AlertTriangle size={40} className="mx-auto text-red-300" />
 
-                    <h1 className="mt-6 text-5xl font-extrabold tracking-tight md:text-6xl">
-                      {job.title}
-                    </h1>
+              <h1 className="mt-5 text-3xl font-extrabold text-red-300">
+                Job not available
+              </h1>
 
-                    <p className="mt-5 text-xl font-semibold text-zinc-300">
-                      {job.company}
-                    </p>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-zinc-300">
+                {jobError}
+              </p>
 
-                    <div className="mt-6 flex flex-wrap gap-4 text-sm text-zinc-400">
-                      <span className="inline-flex items-center gap-2">
-                        <MapPin size={17} className="text-teal-300" />
-                        {job.location}
-                      </span>
+              <Link
+                to="/jobs"
+                className="mt-8 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-7 py-3 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
+              >
+                Browse Jobs
+                <ArrowRight size={17} />
+              </Link>
+            </div>
+          )}
 
-                      <span className="inline-flex items-center gap-2">
-                        <BriefcaseBusiness size={17} className="text-yellow-300" />
-                        {job.type}
-                      </span>
+          {!loadingJob && !jobError && job && (
+            <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_390px] lg:items-start">
+              <div>
+                <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl shadow-teal-500/10 md:p-10">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-sm font-bold text-teal-300">
+                      <ShieldCheck size={16} />
+                      Admin Approved
+                    </span>
 
-                      <span className="inline-flex items-center gap-2">
-                        <Clock size={17} className="text-emerald-300" />
-                        {job.experience}
-                      </span>
-                    </div>
+                    <span className="rounded-full bg-yellow-400/10 px-4 py-2 text-sm font-bold text-yellow-300">
+                      {job.type || "Job"}
+                    </span>
+
+                    <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-zinc-300">
+                      {job.category || "General"}
+                    </span>
                   </div>
 
-                  <div
-                    className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl ${
-                      isHighlyVerified
-                        ? "bg-yellow-400 text-zinc-950"
-                        : "bg-teal-500 text-zinc-950"
-                    }`}
-                  >
-                    <ShieldCheck size={42} />
+                  <h1 className="mt-6 text-5xl font-extrabold tracking-tight md:text-6xl">
+                    {job.title || "Untitled Job"}
+                  </h1>
+
+                  <div className="mt-5 flex flex-wrap gap-4 text-sm text-zinc-400">
+                    <span className="inline-flex items-center gap-2">
+                      <Building2 size={17} className="text-teal-300" />
+                      {job.company || "Verified Employer"}
+                    </span>
+
+                    <span className="inline-flex items-center gap-2">
+                      <MapPin size={17} className="text-teal-300" />
+                      {job.location || "Location not specified"}
+                    </span>
+
+                    <span className="inline-flex items-center gap-2">
+                      <CalendarDays size={17} className="text-teal-300" />
+                      Deadline: {job.deadline || "Not specified"}
+                    </span>
+                  </div>
+
+                  <div className="mt-8 grid gap-4 md:grid-cols-3">
+                    <InfoCard
+                      icon={BriefcaseBusiness}
+                      label="Job Type"
+                      value={job.type || "Not specified"}
+                    />
+
+                    <InfoCard
+                      icon={Clock}
+                      label="Experience"
+                      value={job.experience || "Not specified"}
+                    />
+
+                    <InfoCard
+                      icon={BadgeCheck}
+                      label="Salary"
+                      value={job.salary || "Negotiable"}
+                    />
                   </div>
                 </div>
 
-                <div className="mt-10 grid gap-4 md:grid-cols-4">
-                  <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5">
-                    <p className="text-sm text-zinc-500">Category</p>
-                    <p className="mt-2 font-bold text-white">{job.category}</p>
-                  </div>
+                <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/5 p-8">
+                  <h2 className="text-3xl font-extrabold">Job Description</h2>
 
-                  <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5">
-                    <p className="text-sm text-zinc-500">Salary</p>
-                    <p className="mt-2 font-bold text-white">
-                      {job.salary || "Negotiable"}
-                    </p>
-                  </div>
+                  <p className="mt-5 whitespace-pre-line text-sm leading-8 text-zinc-300">
+                    {job.description || "No job description added."}
+                  </p>
+                </section>
 
-                  <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5">
-                    <p className="text-sm text-zinc-500">Deadline</p>
-                    <p className="mt-2 font-bold text-white">
-                      {job.deadline || "Not specified"}
-                    </p>
-                  </div>
+                <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/5 p-8">
+                  <h2 className="text-3xl font-extrabold">Requirements</h2>
 
-                  <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5">
-                    <p className="text-sm text-zinc-500">Access</p>
-                    <p className="mt-2 font-bold text-teal-300">Free to apply</p>
-                  </div>
-                </div>
-              </div>
+                  <p className="mt-5 whitespace-pre-line text-sm leading-8 text-zinc-300">
+                    {job.requirements || "No requirements added."}
+                  </p>
+                </section>
 
-              {job.source === "employer-submitted" && (
-                <div className="mt-8 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-6">
-                  <h2 className="flex items-center gap-2 text-2xl font-extrabold text-emerald-300">
-                    <BadgeCheck size={24} />
-                    Admin-approved job advert
+                <section className="mt-8 rounded-[2rem] border border-teal-400/20 bg-teal-400/10 p-8">
+                  <h2 className="flex items-center gap-2 text-3xl font-extrabold text-teal-300">
+                    <ShieldCheck size={28} />
+                    TrueHire Safety Notice
                   </h2>
 
-                  <p className="mt-3 text-sm leading-7 text-zinc-300">
-                    This job was submitted by an employer and approved by TrueHire Global
-                    admin before appearing publicly.
+                  <p className="mt-5 text-sm leading-8 text-zinc-300">
+                    This job is visible because it has been approved by admin. Still,
+                    never pay registration fees, application fees, interview fees,
+                    medical fees, transport fees, or recruitment payments to get a job.
                   </p>
-                </div>
-              )}
-
-              <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-8">
-                <h2 className="text-3xl font-extrabold">Job Description</h2>
-
-                <p className="mt-5 text-base leading-8 text-zinc-300">
-                  {job.description}
-                </p>
+                </section>
               </div>
 
-              <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-8">
-                <h2 className="text-3xl font-extrabold">Responsibilities</h2>
+              <aside className="lg:sticky lg:top-28 lg:h-fit">
+                <div className="space-y-6">
+                  <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-teal-500/10">
+                    <div className="rounded-[1.5rem] border border-yellow-400/20 bg-yellow-400/10 p-6">
+                      <h2 className="text-2xl font-extrabold text-yellow-300">
+                        Apply for this job
+                      </h2>
 
-                <div className="mt-6 space-y-4">
-                  {responsibilities.map((item, index) => (
-                    <div key={index} className="flex gap-4">
-                      <CheckCircle2
-                        size={22}
-                        className="mt-1 shrink-0 text-teal-300"
-                      />
-                      <p className="leading-7 text-zinc-300">{item}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                      <p className="mt-3 text-sm leading-7 text-zinc-300">
+                        Submit your application through TrueHire Global. You may need to
+                        sign in as a job seeker first.
+                      </p>
 
-              <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-8">
-                <h2 className="text-3xl font-extrabold">Requirements</h2>
+                      <Link
+                        to={`/jobs/${job.id}/apply`}
+                        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-4 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
+                      >
+                        Apply Now
+                        <ArrowRight size={17} />
+                      </Link>
 
-                <div className="mt-6 space-y-4">
-                  {requirements.map((item, index) => (
-                    <div key={index} className="flex gap-4">
-                      <CheckCircle2
-                        size={22}
-                        className="mt-1 shrink-0 text-yellow-300"
-                      />
-                      <p className="leading-7 text-zinc-300">{item}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-8 rounded-3xl border border-red-400/20 bg-red-400/10 p-8">
-                <h2 className="flex items-center gap-2 text-2xl font-extrabold text-red-300">
-                  <AlertTriangle size={24} />
-                  Safety reminder
-                </h2>
-
-                <p className="mt-3 text-sm leading-7 text-zinc-300">
-                  Never pay money to get a job. TrueHire Global flags job adverts that
-                  request application fees, registration fees, interview fees, medical
-                  fees, or recruitment payments.
-                </p>
-
-                <Link
-                  to={`/contact?type=report&job=${encodeURIComponent(job.title)}`}
-                  className="mt-6 inline-flex items-center gap-2 rounded-full border border-red-400/40 px-6 py-3 text-sm font-bold text-red-300 hover:bg-red-500 hover:text-white"
-                >
-                  Report Suspicious Job
-                  <ArrowRight size={17} />
-                </Link>
-              </div>
-            </div>
-
-            <aside className="lg:sticky lg:top-28 lg:h-fit">
-              <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-teal-500/10">
-                <div className="rounded-[1.5rem] border border-white/10 bg-zinc-950 p-6">
-                  <h2 className="text-2xl font-extrabold">Apply for this job</h2>
-
-                  <p className="mt-3 text-sm leading-6 text-zinc-400">
-                    Apply safely through TrueHire Global. Your application will be saved
-                    under your job seeker dashboard.
-                  </p>
-
-                  <Link
-                    to={`/jobs/${job.id}/apply`}
-                    className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-4 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
-                  >
-                    Apply Now
-                    <ArrowRight size={17} />
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={toggleSaveJob}
-                    className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-5 py-4 text-sm font-bold ${
-                      isSaved
-                        ? "border-teal-400/40 bg-teal-400/10 text-teal-300"
-                        : "border-white/20 text-white hover:border-teal-400 hover:text-teal-300"
-                    }`}
-                  >
-                    <Star size={17} />
-                    {isSaved ? "Saved Job" : "Save Job"}
-                  </button>
-
-                  <div className="mt-8 space-y-4">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm text-zinc-500">Trust Level</p>
-                      <p
-                        className={`mt-1 font-bold ${
-                          isHighlyVerified ? "text-yellow-300" : "text-teal-300"
+                      <button
+                        type="button"
+                        onClick={handleSaveJob}
+                        disabled={saved}
+                        className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-bold ${
+                          saved
+                            ? "cursor-not-allowed bg-emerald-400/10 text-emerald-300"
+                            : "border border-teal-400/40 text-teal-300 hover:bg-teal-500 hover:text-zinc-950"
                         }`}
                       >
-                        {job.trustBadge || "Verified Employer"}
+                        <Heart size={17} />
+                        {saved ? "Job Saved" : "Save Job"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+                    <h2 className="text-2xl font-extrabold">Employer Contact</h2>
+
+                    <div className="mt-5 space-y-4 text-sm text-zinc-300">
+                      <p className="flex items-center gap-3">
+                        <Mail size={18} className="text-teal-300" />
+                        {job.email || "No email added"}
+                      </p>
+
+                      <p className="flex items-center gap-3">
+                        <Phone size={18} className="text-teal-300" />
+                        {job.phone || "No phone added"}
                       </p>
                     </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm text-zinc-500">Work Type</p>
-                      <p className="mt-1 font-bold text-white">{job.type}</p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                      <p className="text-sm text-zinc-500">Deadline</p>
-                      <p className="mt-1 font-bold text-white">{job.deadline}</p>
-                    </div>
                   </div>
 
-                  <div className="mt-8 rounded-2xl border border-teal-400/20 bg-teal-400/10 p-5">
-                    <h3 className="font-bold text-teal-300">
-                      TrueHire safety check
-                    </h3>
+                  <div className="rounded-[2rem] border border-emerald-400/20 bg-emerald-400/10 p-6">
+                    <h2 className="flex items-center gap-2 text-2xl font-extrabold text-emerald-300">
+                      <CheckCircle2 size={24} />
+                      Approved Listing
+                    </h2>
 
-                    <p className="mt-2 text-sm leading-6 text-zinc-300">
-                      Apply only through safe channels. Do not send money to any employer
-                      or recruiter.
+                    <p className="mt-3 text-sm leading-7 text-zinc-300">
+                      This job was approved from the backend Admin Dashboard and is saved
+                      in the Prisma database.
                     </p>
                   </div>
+
+                  <div className="rounded-[2rem] border border-red-400/20 bg-red-400/10 p-6">
+                    <h2 className="flex items-center gap-2 text-2xl font-extrabold text-red-300">
+                      <AlertTriangle size={24} />
+                      Report Suspicious Job
+                    </h2>
+
+                    <p className="mt-3 text-sm leading-7 text-zinc-300">
+                      If this employer asks you for money or suspicious documents, report
+                      it immediately.
+                    </p>
+
+                    <Link
+                      to={`/contact?type=report&job=${job.id}`}
+                      className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-400/40 px-5 py-3 text-sm font-bold text-red-300 hover:bg-red-500 hover:text-white"
+                    >
+                      Report Job
+                      <ArrowRight size={17} />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </aside>
-          </div>
+              </aside>
+            </div>
+          )}
         </div>
       </section>
 
       <Footer />
     </main>
+  )
+}
+
+function InfoCard({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-950 p-5">
+      <Icon size={22} className="text-teal-300" />
+
+      <p className="mt-4 text-xs font-bold uppercase tracking-wide text-zinc-500">
+        {label}
+      </p>
+
+      <p className="mt-2 text-sm font-extrabold text-white">{value}</p>
+    </div>
   )
 }
 

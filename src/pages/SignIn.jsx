@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
+import { loginUser } from "../services/api"
 
 function SignIn() {
   const navigate = useNavigate()
@@ -20,6 +21,7 @@ function SignIn() {
 
   const [accountType, setAccountType] = useState(requiredRole || "jobseeker")
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
   function getRoleLabel(role) {
     if (role === "jobseeker") return "Job Seeker"
@@ -35,60 +37,91 @@ function SignIn() {
     return "/"
   }
 
-  function handleSignIn(event) {
-    event.preventDefault()
+  function mapBackendRole(role) {
+  if (role === "JOB_SEEKER") return "jobseeker"
+  if (role === "EMPLOYER") return "employer"
+  if (role === "ADMIN") return "admin"
+  return role
+}
 
-    const formData = new FormData(event.target)
-    const email = formData.get("email")
-    const password = formData.get("password")
+function formatVerificationStatus(status) {
+  if (status === "VERIFICATION_PENDING") return "Verification Pending"
+  if (status === "SUBMITTED_FOR_REVIEW") return "Submitted for Review"
+  if (status === "VERIFIED") return "Verified"
+  if (status === "FLAGGED") return "Flagged"
+  if (status === "REJECTED") return "Rejected"
+  return "Verification Pending"
+}
 
-    if (requiredRole && accountType !== requiredRole) {
-      setError(
-        `This page requires a ${getRoleLabel(
-          requiredRole
-        )} account. Please choose the correct account type.`
-      )
-      return
-    }
+function normaliseCurrentUser(user) {
+  const mappedRole = mapBackendRole(user.role)
 
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
+  return {
+    id: user.id,
+    role: mappedRole,
+    backendRole: user.role,
+    displayName: user.name,
+    email: user.email,
+    phone: user.phone || "",
+    companyName:
+      mappedRole === "employer"
+        ? user.employerProfile?.companyName || user.name
+        : "",
+    employerProfile: user.employerProfile,
+    jobSeekerProfile: user.jobSeekerProfile,
+  }
+}
+
+async function handleSignIn(event) {
+  event.preventDefault()
+
+  const formData = new FormData(event.target)
+  const email = formData.get("email")
+  const password = formData.get("password")
+
+  if (requiredRole && accountType !== requiredRole) {
+    setError(
+      `This page requires a ${getRoleLabel(
+        requiredRole
+      )} account. Please choose the correct account type.`
     )
-
-    const existingUser = registeredUsers.find(
-      (user) =>
-        user.email?.toLowerCase() === email.toLowerCase() &&
-        user.role === accountType
-    )
-
-    if (existingUser?.password && existingUser.password !== password) {
-      setError("Incorrect password. Please check your login details.")
-      return
-    }
-
-    const currentUser = existingUser || {
-      email,
-      role: accountType,
-      displayName:
-        accountType === "employer"
-          ? "Employer Account"
-          : email.split("@")[0] || "TrueHire User",
-      companyName:
-        accountType === "employer"
-          ? "Employer Company"
-          : "",
-    }
-
-    localStorage.setItem("currentUser", JSON.stringify(currentUser))
-    localStorage.setItem("userRole", accountType)
-    localStorage.setItem("isLoggedIn", "true")
-
-    setError("")
-
-    navigate(returnTo || getDefaultRedirect(accountType))
+    return
   }
 
+  try {
+    setLoading(true)
+    setError("")
+
+    const response = await loginUser({
+      email,
+      password,
+      role: accountType,
+    })
+
+    const currentUser = normaliseCurrentUser(response.user)
+
+    localStorage.setItem("authToken", response.token)
+    localStorage.setItem("currentUser", JSON.stringify(currentUser))
+    localStorage.setItem("userRole", currentUser.role)
+    localStorage.setItem("isLoggedIn", "true")
+
+    if (currentUser.role === "employer") {
+      localStorage.setItem(
+        "employerVerificationStatus",
+        formatVerificationStatus(response.user.employerProfile?.verificationStatus)
+      )
+    }
+
+    navigate(returnTo || getDefaultRedirect(currentUser.role))
+  } catch (error) {
+    setError(error.message)
+  } finally {
+    setLoading(false)
+  }
+}
+
   function clearCurrentSession() {
+    localStorage.removeItem("authToken")
     localStorage.removeItem("currentUser")
     localStorage.removeItem("userRole")
     localStorage.removeItem("isLoggedIn")
@@ -241,11 +274,16 @@ function SignIn() {
                 </div>
 
                 <button
-                  type="submit"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-4 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
-                >
-                  Sign In
-                  <ArrowRight size={17} />
+                    type="submit"
+                    disabled={loading}
+                    className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-extrabold ${
+                      loading
+                        ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                        : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
+                    }`}
+                  >
+                    {loading ? "Signing In..." : "Sign In"}
+                    {!loading && <ArrowRight size={17} />}
                 </button>
               </form>
 

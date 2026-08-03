@@ -15,28 +15,31 @@ import {
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
-import { analyseJobRisk } from "../utils/scamRisk"
+import { createJob } from "../services/api"
 
 function PostJob() {
   const navigate = useNavigate()
+
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
   const verificationStatus =
     localStorage.getItem("employerVerificationStatus") || "Verification Pending"
 
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
   const [riskPreview, setRiskPreview] = useState(null)
 
-  function handlePostJob(event) {
+  async function handlePostJob(event) {
     event.preventDefault()
 
     const formData = new FormData(event.target)
 
     const newJob = {
-      id: Date.now(),
       title: formData.get("title"),
       company:
         formData.get("company") ||
         currentUser.companyName ||
+        currentUser.employerProfile?.companyName ||
         currentUser.displayName ||
         "Employer Company",
       email: formData.get("email") || currentUser.email || "",
@@ -49,31 +52,30 @@ function PostJob() {
       experience: formData.get("experience"),
       description: formData.get("description"),
       requirements: formData.get("requirements"),
-      status: "Pending Review",
-      paymentStatus: "Payment Disabled",
-      verificationStatus,
-      submittedAt: new Date().toLocaleDateString("en-GB"),
     }
 
-    const risk = analyseJobRisk(newJob)
+    try {
+      setLoading(true)
+      setError("")
 
-    const finalJob = {
-      ...newJob,
-      scamRiskLevel: risk.level,
-      scamRiskScore: risk.score,
-      scamRiskReasons: risk.reasons,
+      const response = await createJob(newJob)
+
+      setRiskPreview({
+        level: response.job?.scamRiskLevel || "Low Risk",
+        score: response.job?.scamRiskScore || 0,
+        reasons: response.job?.scamRiskReasons || [],
+      })
+
+      setSubmitted(true)
+
+      setTimeout(() => {
+        navigate("/employer-dashboard")
+      }, 1400)
+    } catch (error) {
+      setError(error.message || "Failed to submit job advert")
+    } finally {
+      setLoading(false)
     }
-
-    const employerJobs = JSON.parse(localStorage.getItem("employerJobs") || "[]")
-
-    localStorage.setItem("employerJobs", JSON.stringify([finalJob, ...employerJobs]))
-
-    setRiskPreview(risk)
-    setSubmitted(true)
-
-    setTimeout(() => {
-      navigate("/employer-dashboard")
-    }, 1400)
   }
 
   function getRiskClass(level) {
@@ -117,8 +119,8 @@ function PostJob() {
                 </h1>
 
                 <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-400">
-                  Post a job advert for admin review. The advert will only appear publicly
-                  after approval. Payments remain disabled until backend security is ready.
+                  Post a job advert for admin review. The advert will be saved in
+                  the backend database and will only appear publicly after approval.
                 </p>
               </div>
 
@@ -130,8 +132,9 @@ function PostJob() {
                   </h2>
 
                   <p className="mt-3 text-sm leading-7 text-zinc-300">
-                    Your advert has been saved with payment disabled and will appear in
-                    the Admin Dashboard for review.
+                    Your advert has been saved in the database with payment disabled.
+                    It will appear in the Admin Dashboard once we connect admin review to
+                    the backend.
                   </p>
 
                   {riskPreview && (
@@ -157,6 +160,16 @@ function PostJob() {
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-8 rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
+                  <h2 className="font-extrabold text-red-300">
+                    Job submission failed
+                  </h2>
+
+                  <p className="mt-3 text-sm leading-7 text-zinc-300">{error}</p>
                 </div>
               )}
 
@@ -238,7 +251,10 @@ function PostJob() {
                     label="Company Name"
                     name="company"
                     defaultValue={
-                      currentUser.companyName || currentUser.displayName || ""
+                      currentUser.companyName ||
+                      currentUser.employerProfile?.companyName ||
+                      currentUser.displayName ||
+                      ""
                     }
                     placeholder="Enter company name"
                     required
@@ -313,15 +329,20 @@ function PostJob() {
 
                 <button
                   type="submit"
-                  disabled={submitted}
+                  disabled={submitted || loading}
                   className={`mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-extrabold ${
-                    submitted
+                    submitted || loading
                       ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
                       : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
                   }`}
                 >
-                  {submitted ? "Job Submitted" : "Submit Job for Review"}
-                  {!submitted && <ArrowRight size={17} />}
+                  {loading
+                    ? "Submitting Job..."
+                    : submitted
+                    ? "Job Submitted"
+                    : "Submit Job for Review"}
+
+                  {!submitted && !loading && <ArrowRight size={17} />}
                 </button>
               </form>
             </div>
@@ -357,6 +378,18 @@ function PostJob() {
 
                   <p className="mt-5 rounded-full bg-zinc-950 px-4 py-2 text-center text-sm font-bold text-yellow-300">
                     Payment Disabled
+                  </p>
+                </div>
+
+                <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+                  <h2 className="text-2xl font-extrabold">Employer Status</h2>
+
+                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                    Current verification status:
+                  </p>
+
+                  <p className="mt-4 rounded-full bg-teal-400/10 px-4 py-2 text-center text-sm font-bold text-teal-300">
+                    {verificationStatus}
                   </p>
                 </div>
 

@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  JOB_SEEKER
+  EMPLOYER
+  ADMIN
+}
+
+enum JobStatus {
+  PENDING_REVIEW
+  APPROVED
+  FLAGGED
+  REJECTED
+}
+
+enum VerificationStatus {
+  VERIFICATION_PENDING
+  SUBMITTED_FOR_REVIEW
+  VERIFIED
+  FLAGGED
+  REJECTED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  REVIEWED
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  REJECTED
+}
+
+enum ReportStatus {
+  SUBMITTED
+  INVESTIGATING
+  RESOLVED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  role      UserRole
+  name      String
+  email     String   @unique
+  phone     String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobSeekerProfile JobSeekerProfile?
+  employerProfile  EmployerProfile?
+  applications     Application[]
+  notifications    Notification[]
+}
+
+model JobSeekerProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  fullName          String
+  phone             String?
+  educationLevel    String?
+  experienceLevel   String?
+  preferredCategory String?
+  preferredLocation String?
+  skills            String?
+  careerSummary     String?
+  cvFileName        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmployerProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  companyName        String
+  phone              String?
+  website            String?
+  address            String?
+  verificationStatus VerificationStatus @default(VERIFICATION_PENDING)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs                  Job[]
+  verificationRequests  EmployerVerification[]
+}
+
+model Job {
+  id              String    @id @default(cuid())
+  employerId      String?
+  title           String
+  company         String
+  email           String
+  phone           String?
+  location        String
+  type            String
+  category        String
+  salary          String?
+  deadline        String
+  experience      String?
+  description     String
+  requirements    String
+  status          JobStatus @default(PENDING_REVIEW)
+  paymentStatus   String    @default("PAYMENT_DISABLED")
+  scamRiskLevel   String?
+  scamRiskScore   Int?
+  scamRiskReasons String?
+  adminNote       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  employer     EmployerProfile? @relation(fields: [employerId], references: [id], onDelete: SetNull)
+  applications Application[]
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  jobId       String
+  userId      String
+  fullName    String
+  email       String
+  phone       String?
+  cvFileName  String?
+  coverNote   String?
+  status      ApplicationStatus @default(SUBMITTED)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmployerVerification {
+  id                           String             @id @default(cuid())
+  employerId                   String
+  companyName                  String
+  email                        String
+  phone                        String?
+  companyRegistrationNumber    String
+  tpin                         String
+  businessType                 String
+  address                      String
+  contactPerson                String
+  website                      String?
+  businessRegistrationFileName String?
+  taxDocumentFileName          String?
+  authorizationLetterFileName  String?
+  status                       VerificationStatus @default(SUBMITTED_FOR_REVIEW)
+  createdAt                    DateTime           @default(now())
+  updatedAt                    DateTime           @updatedAt
+
+  employer EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
+}
+
+model SafetyReport {
+  id          String       @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  jobTitle    String?
+  message     String
+  status      ReportStatus @default(SUBMITTED)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  jobId     String?
+  title     String
+  message   String
+  status    String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

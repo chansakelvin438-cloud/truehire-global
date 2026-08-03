@@ -1,4 +1,9 @@
 node_modules
 dist
 .env
-.DS_Store
+.env.local
+
+backend/.env
+backend/node_modules
+backend/prisma/dev.db
+backend/prisma/dev.db-journal

@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
+import { registerUser } from "../services/api"
 
 function Register() {
   const navigate = useNavigate()
@@ -21,82 +22,108 @@ function Register() {
   const [accountType, setAccountType] = useState("jobseeker")
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   function getDefaultRedirect(role) {
     if (role === "jobseeker") return "/dashboard"
     if (role === "employer") return "/employer-dashboard"
     return "/"
   }
+  function mapBackendRole(role) {
+  if (role === "JOB_SEEKER") return "jobseeker"
+  if (role === "EMPLOYER") return "employer"
+  if (role === "ADMIN") return "admin"
+  return role
+}
 
-  function handleRegister(event) {
-    event.preventDefault()
+function formatVerificationStatus(status) {
+  if (status === "VERIFICATION_PENDING") return "Verification Pending"
+  if (status === "SUBMITTED_FOR_REVIEW") return "Submitted for Review"
+  if (status === "VERIFIED") return "Verified"
+  if (status === "FLAGGED") return "Flagged"
+  if (status === "REJECTED") return "Rejected"
+  return "Verification Pending"
+}
 
-    const formData = new FormData(event.target)
+function normaliseCurrentUser(user) {
+  const mappedRole = mapBackendRole(user.role)
 
-    const password = formData.get("password")
-    const confirmPassword = formData.get("confirmPassword")
-    const email = formData.get("email")
+  return {
+    id: user.id,
+    role: mappedRole,
+    backendRole: user.role,
+    displayName: user.name,
+    email: user.email,
+    phone: user.phone || "",
+    companyName:
+      mappedRole === "employer"
+        ? user.employerProfile?.companyName || user.name
+        : "",
+    employerProfile: user.employerProfile,
+    jobSeekerProfile: user.jobSeekerProfile,
+  }
+}
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match. Please confirm your password.")
-      return
-    }
+async function handleRegister(event) {
+  event.preventDefault()
 
-    const registeredUsers = JSON.parse(
-      localStorage.getItem("registeredUsers") || "[]"
-    )
+  const formData = new FormData(event.target)
 
-    const existingUser = registeredUsers.find(
-      (user) =>
-        user.email?.toLowerCase() === email.toLowerCase() &&
-        user.role === accountType
-    )
+  const password = formData.get("password")
+  const confirmPassword = formData.get("confirmPassword")
+  const email = formData.get("email")
+  const firstName = formData.get("firstName") || ""
+  const lastName = formData.get("lastName") || ""
+  const companyName = formData.get("companyName") || ""
 
-    if (existingUser) {
-      setError("An account with this email and account type already exists.")
-      return
-    }
+  if (password !== confirmPassword) {
+    setError("Passwords do not match. Please confirm your password.")
+    return
+  }
 
-    const firstName = formData.get("firstName") || ""
-    const lastName = formData.get("lastName") || ""
-    const companyName = formData.get("companyName") || ""
+  try {
+    setLoading(true)
+    setError("")
 
-    const newUser = {
-      id: Date.now(),
+    const response = await registerUser({
       role: accountType,
       firstName,
       lastName,
       companyName,
-      displayName:
+      name:
         accountType === "employer"
           ? companyName
           : `${firstName} ${lastName}`.trim(),
       email,
       phone: formData.get("phone"),
       password,
-      createdAt: new Date().toLocaleDateString("en-GB"),
-    }
+    })
 
-    localStorage.setItem(
-      "registeredUsers",
-      JSON.stringify([newUser, ...registeredUsers])
-    )
+    const currentUser = normaliseCurrentUser(response.user)
 
-    localStorage.setItem("currentUser", JSON.stringify(newUser))
-    localStorage.setItem("userRole", accountType)
+    localStorage.setItem("authToken", response.token)
+    localStorage.setItem("currentUser", JSON.stringify(currentUser))
+    localStorage.setItem("userRole", currentUser.role)
     localStorage.setItem("isLoggedIn", "true")
 
-    if (accountType === "employer") {
-      localStorage.setItem("employerVerificationStatus", "Verification Pending")
+    if (currentUser.role === "employer") {
+      localStorage.setItem(
+        "employerVerificationStatus",
+        formatVerificationStatus(response.user.employerProfile?.verificationStatus)
+      )
     }
 
-    setError("")
     setSuccess(true)
 
     setTimeout(() => {
-      navigate(getDefaultRedirect(accountType))
+      navigate(getDefaultRedirect(currentUser.role))
     }, 1200)
+  } catch (error) {
+    setError(error.message)
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
@@ -343,10 +370,15 @@ function Register() {
 
                 <button
                   type="submit"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-4 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
+                  disabled={loading}
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-extrabold ${
+                    loading
+                      ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
+                      : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
+                  }`}
                 >
-                  Create Account
-                  <ArrowRight size={17} />
+                  {loading ? "Creating Account..." : "Create Account"}
+                  {!loading && <ArrowRight size={17} />}
                 </button>
               </form>
 

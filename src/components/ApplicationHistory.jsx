@@ -1,39 +1,50 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
 import {
-  ArrowRight,
+  AlertTriangle,
   BriefcaseBusiness,
   CalendarDays,
+  CheckCircle2,
+  Clock,
   FileText,
   MapPin,
+  XCircle,
 } from "lucide-react"
+import { getMyApplications } from "../services/api"
 
 function ApplicationHistory() {
   const [applications, setApplications] = useState([])
-
-  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    const savedApplications = JSON.parse(localStorage.getItem("applications") || "[]")
+    async function loadApplications() {
+      try {
+        setLoading(true)
+        setError("")
 
-    const userApplications = savedApplications.filter(
-      (application) => application.email === currentUser.email
-    )
+        const response = await getMyApplications()
+        setApplications(response.applications || [])
+      } catch (error) {
+        setError(error.message || "Failed to load applications")
+      } finally {
+        setLoading(false)
+      }
+    }
 
-    setApplications(userApplications)
-  }, [currentUser.email])
+    loadApplications()
+  }, [])
 
   function getStatusClass(status) {
     if (status === "Shortlisted") {
       return "bg-emerald-400/10 text-emerald-300"
     }
 
-    if (status === "Rejected") {
-      return "bg-red-400/10 text-red-300"
+    if (status === "Interview Scheduled") {
+      return "bg-teal-400/10 text-teal-300"
     }
 
-    if (status === "Interview Scheduled") {
-      return "bg-purple-400/10 text-purple-300"
+    if (status === "Rejected") {
+      return "bg-red-400/10 text-red-300"
     }
 
     if (status === "Reviewed") {
@@ -43,116 +54,162 @@ function ApplicationHistory() {
     return "bg-yellow-400/10 text-yellow-300"
   }
 
+  function getStatusIcon(status) {
+    if (status === "Shortlisted" || status === "Interview Scheduled") {
+      return CheckCircle2
+    }
+
+    if (status === "Rejected") {
+      return XCircle
+    }
+
+    if (status === "Reviewed") {
+      return FileText
+    }
+
+    return Clock
+  }
+
   return (
     <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h2 className="text-3xl font-extrabold">Application History</h2>
+          <h2 className="text-3xl font-extrabold">My Applications</h2>
 
-          <p className="mt-2 text-sm text-zinc-400">
-            Track jobs you have applied for and monitor employer status updates.
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            Track jobs you have applied for through TrueHire Global.
           </p>
         </div>
 
-        <Link
-          to="/jobs"
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-teal-400/40 px-5 py-3 text-sm font-bold text-teal-300 hover:bg-teal-500 hover:text-zinc-950"
-        >
-          Browse Jobs
-          <ArrowRight size={17} />
-        </Link>
+        <div className="rounded-full bg-teal-400/10 px-4 py-2 text-sm font-bold text-teal-300">
+          {applications.length} Applications
+        </div>
       </div>
 
-      {applications.length > 0 ? (
-        <div className="mt-6 space-y-4">
-          {applications.map((application) => (
-            <div
-              key={application.id}
-              className="rounded-3xl border border-white/10 bg-zinc-950 p-6"
-            >
-              <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
-                <div>
-                  <p className="text-sm font-bold text-teal-300">
-                    {application.category || "Job Application"}
-                  </p>
+      {loading && (
+        <div className="mt-6 rounded-3xl border border-white/10 bg-zinc-950 p-8 text-center">
+          <p className="text-sm font-bold text-teal-300">
+            Loading your applications...
+          </p>
+        </div>
+      )}
 
-                  <h3 className="mt-2 text-2xl font-extrabold">
-                    {application.jobTitle}
-                  </h3>
+      {error && (
+        <div className="mt-6 rounded-3xl border border-red-400/20 bg-red-400/10 p-8 text-center">
+          <AlertTriangle size={36} className="mx-auto text-red-300" />
 
-                  <div className="mt-3 space-y-2 text-sm text-zinc-400">
-                    <p className="flex items-center gap-2">
-                      <BriefcaseBusiness size={17} className="text-yellow-300" />
-                      {application.company}
+          <h3 className="mt-4 text-xl font-extrabold text-red-300">
+            Could not load applications
+          </h3>
+
+          <p className="mt-3 text-sm leading-6 text-zinc-300">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && applications.length > 0 && (
+        <div className="mt-6 space-y-5">
+          {applications.map((application) => {
+            const StatusIcon = getStatusIcon(application.status)
+            const job = application.job || {}
+
+            return (
+              <div
+                key={application.id}
+                className="rounded-3xl border border-white/10 bg-zinc-950 p-6"
+              >
+                <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
+                  <div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-full bg-teal-400/10 px-3 py-1 text-xs font-bold text-teal-300">
+                        {job.category || "General"}
+                      </span>
+
+                      <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold text-zinc-300">
+                        {job.type || "Job"}
+                      </span>
+
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
+                          application.status
+                        )}`}
+                      >
+                        <StatusIcon size={14} />
+                        {application.status || "Submitted"}
+                      </span>
+                    </div>
+
+                    <h3 className="mt-4 text-2xl font-extrabold">
+                      {job.title || "Job title unavailable"}
+                    </h3>
+
+                    <p className="mt-2 text-sm font-bold text-zinc-300">
+                      {job.company || "Employer unavailable"}
                     </p>
 
-                    <p className="flex items-center gap-2">
-                      <MapPin size={17} className="text-teal-300" />
-                      {application.location}
+                    <div className="mt-3 flex flex-wrap gap-4 text-sm text-zinc-400">
+                      <span className="inline-flex items-center gap-2">
+                        <MapPin size={16} className="text-teal-300" />
+                        {job.location || "Location not specified"}
+                      </span>
+
+                      <span className="inline-flex items-center gap-2">
+                        <CalendarDays size={16} className="text-teal-300" />
+                        Applied: {application.submittedAt || "Not available"}
+                      </span>
+                    </div>
+
+                    {application.coverNote && (
+                      <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <h4 className="font-bold">Cover Note</h4>
+
+                        <p className="mt-2 text-sm leading-7 text-zinc-300">
+                          {application.coverNote}
+                        </p>
+                      </div>
+                    )}
+
+                    {application.cvFileName && (
+                      <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-bold text-zinc-300">
+                        <FileText size={15} className="text-teal-300" />
+                        CV: {application.cvFileName}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="shrink-0 rounded-2xl border border-white/10 bg-white/5 p-5 text-center">
+                    <BriefcaseBusiness
+                      size={28}
+                      className="mx-auto text-yellow-300"
+                    />
+
+                    <p className="mt-3 text-xs font-bold uppercase tracking-wide text-zinc-500">
+                      Status
                     </p>
 
-                    <p className="flex items-center gap-2">
-                      <CalendarDays size={17} className="text-emerald-300" />
-                      Submitted: {application.submittedAt}
-                    </p>
-
-                    <p className="flex items-center gap-2">
-                      <FileText size={17} className="text-zinc-300" />
-                      CV: {application.cvFileName}
+                    <p className="mt-1 text-sm font-extrabold text-white">
+                      {application.status || "Submitted"}
                     </p>
                   </div>
                 </div>
-
-                <div className="flex flex-col gap-3">
-                  <span
-                    className={`rounded-full px-4 py-2 text-center text-xs font-bold ${getStatusClass(
-                      application.status
-                    )}`}
-                  >
-                    {application.status}
-                  </span>
-
-                  <Link
-                    to={`/jobs/${application.jobId}`}
-                    className="rounded-full border border-teal-400/40 px-4 py-2 text-center text-xs font-bold text-teal-300 hover:bg-teal-500 hover:text-zinc-950"
-                  >
-                    View Job
-                  </Link>
-                </div>
               </div>
-
-              {application.coverNote && (
-                <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <h4 className="font-bold">Cover Note</h4>
-                  <p className="mt-2 text-sm leading-7 text-zinc-300">
-                    {application.coverNote}
-                  </p>
-                </div>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
-      ) : (
-        <div className="mt-6 rounded-3xl border border-white/10 bg-zinc-950 p-8 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-500 text-zinc-950">
-            <BriefcaseBusiness size={28} />
+      )}
+
+      {!loading && !error && applications.length === 0 && (
+        <div className="mt-6 rounded-3xl border border-white/10 bg-zinc-950 p-10 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-500 text-zinc-950">
+            <BriefcaseBusiness size={32} />
           </div>
 
-          <h3 className="mt-5 text-2xl font-extrabold">
+          <h3 className="mt-6 text-2xl font-extrabold">
             No applications yet
           </h3>
 
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-400">
-            Jobs you apply for will appear here with their application status.
+            Once you apply for jobs, your applications will appear here from the backend database.
           </p>
-
-          <Link
-            to="/jobs"
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-6 py-3 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
-          >
-            Find Jobs
-            <ArrowRight size={17} />
-          </Link>
         </div>
       )}
     </div>

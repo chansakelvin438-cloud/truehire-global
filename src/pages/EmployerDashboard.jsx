@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import {
   AlertTriangle,
@@ -14,26 +15,41 @@ import {
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
 import EmployerApplicationsPanel from "../components/EmployerApplicationsPanel"
+import { getMyEmployerJobs } from "../services/api"
 
 function EmployerDashboard() {
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
   const verificationStatus =
     localStorage.getItem("employerVerificationStatus") || "Verification Pending"
 
-  const employerJobs = JSON.parse(localStorage.getItem("employerJobs") || "[]")
+  const [myJobs, setMyJobs] = useState([])
+  const [loadingJobs, setLoadingJobs] = useState(true)
+  const [jobsError, setJobsError] = useState("")
 
   const employerName =
     currentUser.companyName ||
+    currentUser.employerProfile?.companyName ||
     currentUser.displayName ||
     currentUser.email ||
     "Employer Account"
 
-  const myJobs = employerJobs.filter(
-    (job) =>
-      job.email === currentUser.email ||
-      job.company === currentUser.companyName ||
-      job.company === currentUser.displayName
-  )
+  useEffect(() => {
+    async function loadEmployerJobs() {
+      try {
+        setLoadingJobs(true)
+        setJobsError("")
+
+        const response = await getMyEmployerJobs()
+        setMyJobs(response.jobs || [])
+      } catch (error) {
+        setJobsError(error.message)
+      } finally {
+        setLoadingJobs(false)
+      }
+    }
+
+    loadEmployerJobs()
+  }, [])
 
   const pendingJobs = myJobs.filter((job) => job.status === "Pending Review")
   const approvedJobs = myJobs.filter((job) => job.status === "Approved")
@@ -245,7 +261,21 @@ function EmployerDashboard() {
                 </Link>
               </div>
 
-              {myJobs.length > 0 ? (
+              {loadingJobs && (
+                <div className="mt-6 rounded-3xl border border-white/10 bg-zinc-950 p-8 text-center">
+                  <p className="text-sm font-bold text-teal-300">
+                    Loading employer jobs...
+                  </p>
+                </div>
+              )}
+
+              {jobsError && (
+                <div className="mt-6 rounded-3xl border border-red-400/20 bg-red-400/10 p-8 text-center">
+                  <p className="text-sm font-bold text-red-300">{jobsError}</p>
+                </div>
+              )}
+
+              {!loadingJobs && !jobsError && myJobs.length > 0 ? (
                 <div className="mt-6 space-y-5">
                   {myJobs.map((job) => (
                     <div
@@ -274,6 +304,28 @@ function EmployerDashboard() {
                           <p className="mt-1 text-sm text-zinc-500">
                             Submitted: {job.submittedAt || "Not available"}
                           </p>
+
+                          {job.scamRiskLevel && (
+                            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                              <h4 className="font-bold text-yellow-300">
+                                Scam Risk Preview
+                              </h4>
+
+                              <p className="mt-2 text-sm leading-6 text-zinc-300">
+                                Risk Level:{" "}
+                                <span className="font-bold text-white">
+                                  {job.scamRiskLevel}
+                                </span>
+                              </p>
+
+                              <p className="mt-1 text-sm leading-6 text-zinc-300">
+                                Risk Score:{" "}
+                                <span className="font-bold text-white">
+                                  {job.scamRiskScore ?? 0}
+                                </span>
+                              </p>
+                            </div>
+                          )}
 
                           {job.adminNote && (
                             <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 p-4">
@@ -330,7 +382,9 @@ function EmployerDashboard() {
                     </div>
                   ))}
                 </div>
-              ) : (
+              ) : null}
+
+              {!loadingJobs && !jobsError && myJobs.length === 0 && (
                 <div className="mt-6 rounded-3xl border border-white/10 bg-zinc-950 p-10 text-center">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-500 text-zinc-950">
                     <BriefcaseBusiness size={32} />
