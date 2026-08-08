@@ -3,7 +3,7 @@ import {
   AlertTriangle,
   BadgeCheck,
   Building2,
-  CheckCircle2,
+  Download,
   FileText,
   Globe,
   Hash,
@@ -12,7 +12,6 @@ import {
   Phone,
   ShieldCheck,
   User,
-  XCircle,
 } from "lucide-react"
 import {
   getAdminEmployerVerifications,
@@ -112,7 +111,8 @@ function EmployerVerificationPanel() {
           </h2>
 
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            Review employer verification requests and update employer trust status.
+            Review employer verification requests, open submitted documents, and update
+            employer trust status.
           </p>
         </div>
 
@@ -183,11 +183,7 @@ function EmployerVerificationPanel() {
                   </p>
 
                   <div className="mt-5 grid gap-3 text-sm text-zinc-400 md:grid-cols-2">
-                    <InfoLine
-                      icon={Mail}
-                      label="Email"
-                      value={verification.email}
-                    />
+                    <InfoLine icon={Mail} label="Email" value={verification.email} />
 
                     <InfoLine
                       icon={Phone}
@@ -201,11 +197,7 @@ function EmployerVerificationPanel() {
                       value={verification.companyRegistrationNumber}
                     />
 
-                    <InfoLine
-                      icon={Hash}
-                      label="TPIN"
-                      value={verification.tpin}
-                    />
+                    <InfoLine icon={Hash} label="TPIN" value={verification.tpin} />
 
                     <InfoLine
                       icon={Building2}
@@ -225,27 +217,26 @@ function EmployerVerificationPanel() {
                       value={verification.website || "No website added"}
                     />
 
-                    <InfoLine
-                      icon={MapPin}
-                      label="Address"
-                      value={verification.address}
-                    />
+                    <InfoLine icon={MapPin} label="Address" value={verification.address} />
                   </div>
 
                   <div className="mt-5 grid gap-3 md:grid-cols-3">
                     <DocumentCard
                       label="Business Registration"
-                      value={verification.businessRegistrationFileName}
+                      fileName={verification.businessRegistrationFileName}
+                      fileUrl={verification.businessRegistrationFileUrl}
                     />
 
                     <DocumentCard
-                      label="Tax Document"
-                      value={verification.taxDocumentFileName}
+                      label="Tax / TPIN Document"
+                      fileName={verification.taxDocumentFileName}
+                      fileUrl={verification.taxDocumentFileUrl}
                     />
 
                     <DocumentCard
-                      label="Authorization Letter"
-                      value={verification.authorizationLetterFileName}
+                      label="Authorisation Letter"
+                      fileName={verification.authorizationLetterFileName}
+                      fileUrl={verification.authorizationLetterFileUrl}
                     />
                   </div>
                 </div>
@@ -254,9 +245,7 @@ function EmployerVerificationPanel() {
                   <button
                     type="button"
                     disabled={updatingId === verification.id}
-                    onClick={() =>
-                      handleStatusUpdate(verification.id, "Verified")
-                    }
+                    onClick={() => handleStatusUpdate(verification.id, "Verified")}
                     className="w-full rounded-2xl bg-yellow-400 px-5 py-3 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
                   >
                     {updatingId === verification.id ? "Updating..." : "Verify"}
@@ -265,9 +254,7 @@ function EmployerVerificationPanel() {
                   <button
                     type="button"
                     disabled={updatingId === verification.id}
-                    onClick={() =>
-                      handleStatusUpdate(verification.id, "Flagged")
-                    }
+                    onClick={() => handleStatusUpdate(verification.id, "Flagged")}
                     className="w-full rounded-2xl border border-orange-400/40 px-5 py-3 text-sm font-bold text-orange-300 hover:bg-orange-500 hover:text-white disabled:cursor-not-allowed disabled:border-zinc-700 disabled:text-zinc-500"
                   >
                     Flag
@@ -276,9 +263,7 @@ function EmployerVerificationPanel() {
                   <button
                     type="button"
                     disabled={updatingId === verification.id}
-                    onClick={() =>
-                      handleStatusUpdate(verification.id, "Rejected")
-                    }
+                    onClick={() => handleStatusUpdate(verification.id, "Rejected")}
                     className="w-full rounded-2xl border border-red-400/40 px-5 py-3 text-sm font-bold text-red-300 hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:border-zinc-700 disabled:text-zinc-500"
                   >
                     Reject
@@ -336,7 +321,7 @@ function InfoLine({ icon: Icon, label, value }) {
   )
 }
 
-function DocumentCard({ label, value }) {
+function DocumentCard({ label, fileName, fileUrl }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
       <FileText size={20} className="text-yellow-300" />
@@ -345,9 +330,21 @@ function DocumentCard({ label, value }) {
         {label}
       </p>
 
-      <p className="mt-2 break-words text-sm font-bold text-white">
-        {value || "No file name recorded"}
-      </p>
+      {fileUrl ? (
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-xs font-extrabold text-zinc-950 hover:bg-yellow-300"
+        >
+          <Download size={15} />
+          Open Document
+        </a>
+      ) : (
+        <p className="mt-2 break-words text-sm font-bold text-white">
+          {fileName || "No document attached"}
+        </p>
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import {
   BadgeCheck,
   Building2,
   CheckCircle2,
+  Download,
   FileText,
   Globe,
   Hash,
@@ -20,6 +21,9 @@ import Footer from "../components/Footer"
 import {
   getMyEmployerVerification,
   submitEmployerVerification,
+  uploadAuthorizationLetter,
+  uploadBusinessRegistrationDocument,
+  uploadTaxDocument,
 } from "../services/api"
 
 function EmployerVerification() {
@@ -34,6 +38,11 @@ function EmployerVerification() {
     localStorage.getItem("employerVerificationStatus") || "Verification Pending"
   )
   const [verification, setVerification] = useState(null)
+  const [selectedDocuments, setSelectedDocuments] = useState({
+    businessRegistrationFile: "",
+    taxDocumentFile: "",
+    authorizationLetterFile: "",
+  })
 
   useEffect(() => {
     async function loadVerification() {
@@ -62,6 +71,16 @@ function EmployerVerification() {
     loadVerification()
   }, [])
 
+  function handleDocumentChange(event) {
+    const { name, files } = event.target
+    const file = files?.[0]
+
+    setSelectedDocuments((current) => ({
+      ...current,
+      [name]: file ? file.name : "",
+    }))
+  }
+
   async function handleVerificationSubmit(event) {
     event.preventDefault()
 
@@ -71,25 +90,65 @@ function EmployerVerification() {
     const taxDocumentFile = formData.get("taxDocumentFile")
     const authorizationLetterFile = formData.get("authorizationLetterFile")
 
-    const verificationData = {
-      companyName: formData.get("companyName"),
-      email: formData.get("email"),
-      phone: formData.get("phone"),
-      companyRegistrationNumber: formData.get("companyRegistrationNumber"),
-      tpin: formData.get("tpin"),
-      businessType: formData.get("businessType"),
-      address: formData.get("address"),
-      contactPerson: formData.get("contactPerson"),
-      website: formData.get("website"),
-      businessRegistrationFileName: businessRegistrationFile?.name || "",
-      taxDocumentFileName: taxDocumentFile?.name || "",
-      authorizationLetterFileName: authorizationLetterFile?.name || "",
-    }
-
     try {
       setSubmitting(true)
       setError("")
       setSuccess(false)
+
+      let businessRegistrationFileName = ""
+      let businessRegistrationFileUrl = ""
+      let taxDocumentFileName = ""
+      let taxDocumentFileUrl = ""
+      let authorizationLetterFileName = ""
+      let authorizationLetterFileUrl = ""
+
+      if (businessRegistrationFile && businessRegistrationFile.size > 0) {
+        const uploadResponse = await uploadBusinessRegistrationDocument(
+          businessRegistrationFile
+        )
+
+        businessRegistrationFileName =
+          uploadResponse.fileName || businessRegistrationFile.name
+        businessRegistrationFileUrl = uploadResponse.fileUrl || ""
+      }
+
+      if (taxDocumentFile && taxDocumentFile.size > 0) {
+        const uploadResponse = await uploadTaxDocument(taxDocumentFile)
+
+        taxDocumentFileName = uploadResponse.fileName || taxDocumentFile.name
+        taxDocumentFileUrl = uploadResponse.fileUrl || ""
+      }
+
+      if (authorizationLetterFile && authorizationLetterFile.size > 0) {
+        const uploadResponse = await uploadAuthorizationLetter(
+          authorizationLetterFile
+        )
+
+        authorizationLetterFileName =
+          uploadResponse.fileName || authorizationLetterFile.name
+        authorizationLetterFileUrl = uploadResponse.fileUrl || ""
+      }
+
+      const verificationData = {
+        companyName: formData.get("companyName"),
+        email: formData.get("email"),
+        phone: formData.get("phone"),
+        companyRegistrationNumber: formData.get("companyRegistrationNumber"),
+        tpin: formData.get("tpin"),
+        businessType: formData.get("businessType"),
+        address: formData.get("address"),
+        contactPerson: formData.get("contactPerson"),
+        website: formData.get("website"),
+
+        businessRegistrationFileName,
+        businessRegistrationFileUrl,
+
+        taxDocumentFileName,
+        taxDocumentFileUrl,
+
+        authorizationLetterFileName,
+        authorizationLetterFileUrl,
+      }
 
       const response = await submitEmployerVerification(verificationData)
 
@@ -101,6 +160,13 @@ function EmployerVerification() {
         "employerVerificationStatus",
         response.verification?.status || "Submitted for Review"
       )
+
+      event.target.reset()
+      setSelectedDocuments({
+        businessRegistrationFile: "",
+        taxDocumentFile: "",
+        authorizationLetterFile: "",
+      })
     } catch (error) {
       setError(error.message || "Failed to submit employer verification")
     } finally {
@@ -157,8 +223,7 @@ function EmployerVerification() {
                 </h1>
 
                 <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-400">
-                  Submit your company details for review so job seekers can trust your
-                  adverts and your organisation.
+                  Submit your company details and supporting documents for review.
                 </p>
               </div>
 
@@ -178,7 +243,8 @@ function EmployerVerification() {
                   </h2>
 
                   <p className="mt-3 text-sm leading-7 text-zinc-300">
-                    Your employer verification request has been submitted for review.
+                    Your employer verification request and documents have been submitted
+                    for review.
                   </p>
                 </div>
               )}
@@ -286,7 +352,9 @@ function EmployerVerification() {
                     icon={User}
                     label="Contact Person"
                     name="contactPerson"
-                    defaultValue={verification?.contactPerson || currentUser.displayName || ""}
+                    defaultValue={
+                      verification?.contactPerson || currentUser.displayName || ""
+                    }
                     placeholder="Name of authorised contact person"
                     required
                   />
@@ -316,21 +384,30 @@ function EmployerVerification() {
                 </h2>
 
                 <p className="mt-3 text-sm leading-6 text-zinc-400">
-                  For now, TrueHire records the document names. Full secure document
-                  upload storage will be added later.
+                  Upload PDF, DOC, DOCX, JPG, PNG, or WEBP files. Maximum size is 5MB per
+                  document.
                 </p>
 
                 <div className="mt-8 grid gap-5 md:grid-cols-3">
                   <FileInputField
                     label="Business Registration"
                     name="businessRegistrationFile"
+                    selectedFileName={selectedDocuments.businessRegistrationFile}
+                    onChange={handleDocumentChange}
                   />
 
-                  <FileInputField label="Tax Document" name="taxDocumentFile" />
+                  <FileInputField
+                    label="Tax / TPIN Document"
+                    name="taxDocumentFile"
+                    selectedFileName={selectedDocuments.taxDocumentFile}
+                    onChange={handleDocumentChange}
+                  />
 
                   <FileInputField
-                    label="Authorization Letter"
+                    label="Authorisation Letter"
                     name="authorizationLetterFile"
+                    selectedFileName={selectedDocuments.authorizationLetterFile}
+                    onChange={handleDocumentChange}
                   />
                 </div>
 
@@ -355,7 +432,7 @@ function EmployerVerification() {
                       : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
                   }`}
                 >
-                  {submitting ? "Submitting Verification..." : "Submit Verification"}
+                  {submitting ? "Uploading and Submitting..." : "Submit Verification"}
                   {!submitting && <ArrowRight size={17} />}
                 </button>
               </form>
@@ -364,7 +441,11 @@ function EmployerVerification() {
             <aside className="lg:sticky lg:top-28 lg:h-fit">
               <div className="space-y-6">
                 <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-teal-500/10">
-                  <div className={`rounded-[1.5rem] border p-6 ${getStatusClass(verificationStatus)}`}>
+                  <div
+                    className={`rounded-[1.5rem] border p-6 ${getStatusClass(
+                      verificationStatus
+                    )}`}
+                  >
                     <BadgeCheck size={34} />
 
                     <h2 className="mt-5 text-2xl font-extrabold">
@@ -392,6 +473,24 @@ function EmployerVerification() {
                       <SummaryItem
                         label="Submitted"
                         value={verification.submittedAt}
+                      />
+
+                      <DocumentLink
+                        label="Business Registration"
+                        fileName={verification.businessRegistrationFileName}
+                        fileUrl={verification.businessRegistrationFileUrl}
+                      />
+
+                      <DocumentLink
+                        label="Tax / TPIN Document"
+                        fileName={verification.taxDocumentFileName}
+                        fileUrl={verification.taxDocumentFileUrl}
+                      />
+
+                      <DocumentLink
+                        label="Authorisation Letter"
+                        fileName={verification.authorizationLetterFileName}
+                        fileUrl={verification.authorizationLetterFileUrl}
                       />
                     </div>
                   </div>
@@ -464,7 +563,7 @@ function SelectField({ label, name, children, defaultValue = "" }) {
   )
 }
 
-function FileInputField({ label, name }) {
+function FileInputField({ label, name, selectedFileName, onChange }) {
   return (
     <div className="rounded-2xl border border-dashed border-white/20 bg-zinc-950 p-5">
       <FileText size={24} className="text-teal-300" />
@@ -476,9 +575,14 @@ function FileInputField({ label, name }) {
       <input
         type="file"
         name={name}
-        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+        onChange={onChange}
         className="mt-4 w-full text-xs text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-yellow-400 file:px-4 file:py-2 file:text-xs file:font-bold file:text-zinc-950 hover:file:bg-yellow-300"
       />
+
+      <p className="mt-3 text-xs leading-5 text-zinc-500">
+        {selectedFileName || "No document selected yet"}
+      </p>
     </div>
   )
 }
@@ -493,6 +597,32 @@ function SummaryItem({ label, value }) {
       <p className="mt-2 break-words text-sm font-bold text-white">
         {value || "Not provided"}
       </p>
+    </div>
+  )
+}
+
+function DocumentLink({ label, fileName, fileUrl }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+        {label}
+      </p>
+
+      {fileUrl ? (
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-xs font-extrabold text-zinc-950 hover:bg-yellow-300"
+        >
+          <Download size={15} />
+          Open Document
+        </a>
+      ) : (
+        <p className="mt-2 break-words text-sm font-bold text-zinc-300">
+          {fileName || "No document attached"}
+        </p>
+      )}
     </div>
   )
 }

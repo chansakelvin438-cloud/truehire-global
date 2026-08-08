@@ -188,3 +188,81 @@ export async function uploadCv(file) {
 
   return data
 }
+
+export async function uploadBusinessRegistrationDocument(file) {
+  const token = localStorage.getItem("authToken")
+
+  const formData = new FormData()
+  formData.append("file", file)
+
+  const response = await fetch(
+    `${API_BASE_URL}/uploads/verification/business-registration`,
+    {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    }
+  )
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to upload business registration document")
+  }
+
+  return data
+}
+
+export async function uploadTaxDocument(file) {
+  const token = localStorage.getItem("authToken")
+
+  const formData = new FormData()
+  formData.append("file", file)
+
+  const response = await fetch(
+    `${API_BASE_URL}/uploads/verification/tax-document`,
+    {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    }
+  )
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to upload tax document")
+  }
+
+  return data
+}
+
+export async function uploadAuthorizationLetter(file) {
+  const token = localStorage.getItem("authToken")
+
+  const formData = new FormData()
+  formData.append("file", file)
+
+  const response = await fetch(
+    `${API_BASE_URL}/uploads/verification/authorization-letter`,
+    {
+      method: "POST",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    }
+  )
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to upload authorization letter")
+  }
+
+  return data
+}

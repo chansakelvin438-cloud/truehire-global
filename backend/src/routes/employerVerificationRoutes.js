@@ -38,13 +38,21 @@ function formatVerificationRequest(request) {
     address: request.address,
     contactPerson: request.contactPerson,
     website: request.website,
+
     businessRegistrationFileName: request.businessRegistrationFileName,
+    businessRegistrationFileUrl: request.businessRegistrationFileUrl,
+
     taxDocumentFileName: request.taxDocumentFileName,
+    taxDocumentFileUrl: request.taxDocumentFileUrl,
+
     authorizationLetterFileName: request.authorizationLetterFileName,
+    authorizationLetterFileUrl: request.authorizationLetterFileUrl,
+
     status: formatVerificationStatus(request.status),
     submittedAt: new Intl.DateTimeFormat("en-GB").format(request.createdAt),
     createdAt: request.createdAt,
     updatedAt: request.updatedAt,
+
     employer: request.employer
       ? {
           id: request.employer.id,
@@ -93,9 +101,15 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
       address,
       contactPerson,
       website,
+
       businessRegistrationFileName,
+      businessRegistrationFileUrl,
+
       taxDocumentFileName,
+      taxDocumentFileUrl,
+
       authorizationLetterFileName,
+      authorizationLetterFileUrl,
     } = req.body
 
     if (
@@ -125,9 +139,16 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
         address,
         contactPerson,
         website: website || "",
+
         businessRegistrationFileName: businessRegistrationFileName || "",
+        businessRegistrationFileUrl: businessRegistrationFileUrl || "",
+
         taxDocumentFileName: taxDocumentFileName || "",
+        taxDocumentFileUrl: taxDocumentFileUrl || "",
+
         authorizationLetterFileName: authorizationLetterFileName || "",
+        authorizationLetterFileUrl: authorizationLetterFileUrl || "",
+
         status: "SUBMITTED_FOR_REVIEW",
       },
       include: {

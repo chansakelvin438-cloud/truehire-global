@@ -152,8 +152,11 @@ model EmployerVerification {
   contactPerson                String
   website                      String?
   businessRegistrationFileName String?
+  businessRegistrationFileUrl  String?
   taxDocumentFileName          String?
+  taxDocumentFileUrl           String?
   authorizationLetterFileName  String?
+  authorizationLetterFileUrl   String?
   status                       VerificationStatus @default(SUBMITTED_FOR_REVIEW)
   createdAt                    DateTime           @default(now())
   updatedAt                    DateTime           @updatedAt

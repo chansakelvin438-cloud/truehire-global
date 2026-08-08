@@ -8,13 +8,37 @@ const router = express.Router()
 
 const companyLogoFolder = path.join(process.cwd(), "uploads", "company-logos")
 const cvFolder = path.join(process.cwd(), "uploads", "cvs")
+const businessRegistrationFolder = path.join(
+  process.cwd(),
+  "uploads",
+  "verification-documents",
+  "business-registration"
+)
+const taxDocumentFolder = path.join(
+  process.cwd(),
+  "uploads",
+  "verification-documents",
+  "tax-documents"
+)
+const authorizationLetterFolder = path.join(
+  process.cwd(),
+  "uploads",
+  "verification-documents",
+  "authorization-letters"
+)
 
-if (!fs.existsSync(companyLogoFolder)) {
-  fs.mkdirSync(companyLogoFolder, { recursive: true })
-}
+const folders = [
+  companyLogoFolder,
+  cvFolder,
+  businessRegistrationFolder,
+  taxDocumentFolder,
+  authorizationLetterFolder,
+]
 
-if (!fs.existsSync(cvFolder)) {
-  fs.mkdirSync(cvFolder, { recursive: true })
+for (const folder of folders) {
+  if (!fs.existsSync(folder)) {
+    fs.mkdirSync(folder, { recursive: true })
+  }
 }
 
 function createStorage(folder) {
@@ -59,6 +83,25 @@ function cvFileFilter(req, file, cb) {
   cb(null, true)
 }
 
+function verificationDocumentFileFilter(req, file, cb) {
+  const allowedTypes = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ]
+
+  if (!allowedTypes.includes(file.mimetype)) {
+    return cb(
+      new Error("Only PDF, DOC, DOCX, JPG, PNG, and WEBP files are allowed.")
+    )
+  }
+
+  cb(null, true)
+}
+
 const companyLogoUpload = multer({
   storage: createStorage(companyLogoFolder),
   fileFilter: imageFileFilter,
@@ -75,6 +118,53 @@ const cvUpload = multer({
   },
 })
 
+const businessRegistrationUpload = multer({
+  storage: createStorage(businessRegistrationFolder),
+  fileFilter: verificationDocumentFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+})
+
+const taxDocumentUpload = multer({
+  storage: createStorage(taxDocumentFolder),
+  fileFilter: verificationDocumentFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+})
+
+const authorizationLetterUpload = multer({
+  storage: createStorage(authorizationLetterFolder),
+  fileFilter: verificationDocumentFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+})
+
+function getBaseUrl(req) {
+  return `${req.protocol}://${req.get("host")}`
+}
+
+function sendUploadedFileResponse(req, res, publicPath, successMessage) {
+  if (!req.file) {
+    return res.status(400).json({
+      status: "error",
+      message: "No file uploaded.",
+    })
+  }
+
+  const baseUrl = getBaseUrl(req)
+
+  return res.status(201).json({
+    status: "success",
+    message: successMessage,
+    fileName: req.file.originalname,
+    storedFileName: req.file.filename,
+    fileUrl: `${baseUrl}${publicPath}/${req.file.filename}`,
+  })
+}
+
 router.post(
   "/company-logo",
   protect,
@@ -82,25 +172,16 @@ router.post(
   companyLogoUpload.single("file"),
   (req, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({
-          status: "error",
-          message: "No logo file uploaded.",
-        })
-      }
-
-      const baseUrl = `${req.protocol}://${req.get("host")}`
-
-      res.status(201).json({
-        status: "success",
-        message: "Company logo uploaded successfully.",
-        fileName: req.file.filename,
-        fileUrl: `${baseUrl}/uploads/company-logos/${req.file.filename}`,
-      })
+      return sendUploadedFileResponse(
+        req,
+        res,
+        "/uploads/company-logos",
+        "Company logo uploaded successfully."
+      )
     } catch (error) {
       console.error(error)
 
-      res.status(500).json({
+      return res.status(500).json({
         status: "error",
         message: "Failed to upload company logo.",
       })
@@ -115,28 +196,90 @@ router.post(
   cvUpload.single("file"),
   (req, res) => {
     try {
-      if (!req.file) {
-        return res.status(400).json({
-          status: "error",
-          message: "No CV file uploaded.",
-        })
-      }
-
-      const baseUrl = `${req.protocol}://${req.get("host")}`
-
-      res.status(201).json({
-        status: "success",
-        message: "CV uploaded successfully.",
-        fileName: req.file.originalname,
-        storedFileName: req.file.filename,
-        fileUrl: `${baseUrl}/uploads/cvs/${req.file.filename}`,
-      })
+      return sendUploadedFileResponse(
+        req,
+        res,
+        "/uploads/cvs",
+        "CV uploaded successfully."
+      )
     } catch (error) {
       console.error(error)
 
-      res.status(500).json({
+      return res.status(500).json({
         status: "error",
         message: "Failed to upload CV.",
+      })
+    }
+  }
+)
+
+router.post(
+  "/verification/business-registration",
+  protect,
+  allowRoles("EMPLOYER"),
+  businessRegistrationUpload.single("file"),
+  (req, res) => {
+    try {
+      return sendUploadedFileResponse(
+        req,
+        res,
+        "/uploads/verification-documents/business-registration",
+        "Business registration document uploaded successfully."
+      )
+    } catch (error) {
+      console.error(error)
+
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to upload business registration document.",
+      })
+    }
+  }
+)
+
+router.post(
+  "/verification/tax-document",
+  protect,
+  allowRoles("EMPLOYER"),
+  taxDocumentUpload.single("file"),
+  (req, res) => {
+    try {
+      return sendUploadedFileResponse(
+        req,
+        res,
+        "/uploads/verification-documents/tax-documents",
+        "Tax document uploaded successfully."
+      )
+    } catch (error) {
+      console.error(error)
+
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to upload tax document.",
+      })
+    }
+  }
+)
+
+router.post(
+  "/verification/authorization-letter",
+  protect,
+  allowRoles("EMPLOYER"),
+  authorizationLetterUpload.single("file"),
+  (req, res) => {
+    try {
+      return sendUploadedFileResponse(
+        req,
+        res,
+        "/uploads/verification-documents/authorization-letters",
+        "Authorization letter uploaded successfully."
+      )
+    } catch (error) {
+      console.error(error)
+
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to upload authorization letter.",
       })
     }
   }
