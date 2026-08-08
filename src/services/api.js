@@ -142,3 +142,49 @@ export function updateSafetyReportStatus(reportId, status) {
     body: JSON.stringify({ status }),
   })
 }
+
+export async function uploadCompanyLogo(file) {
+  const token = localStorage.getItem("authToken")
+
+  const formData = new FormData()
+  formData.append("file", file)
+
+  const response = await fetch(`${API_BASE_URL}/uploads/company-logo`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to upload company logo")
+  }
+
+  return data
+}
+
+export async function uploadCv(file) {
+  const token = localStorage.getItem("authToken")
+
+  const formData = new FormData()
+  formData.append("file", file)
+
+  const response = await fetch(`${API_BASE_URL}/uploads/cv`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to upload CV")
+  }
+
+  return data
+}

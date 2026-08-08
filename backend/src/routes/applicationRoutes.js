@@ -51,6 +51,7 @@ function formatApplication(application) {
     email: application.email,
     phone: application.phone,
     cvFileName: application.cvFileName,
+    cvFileUrl: application.cvFileUrl,
     coverNote: application.coverNote,
     status: formatApplicationStatus(application.status),
     submittedAt: new Intl.DateTimeFormat("en-GB").format(application.createdAt),
@@ -82,7 +83,8 @@ function formatApplication(application) {
 router.post("/jobs/:jobId", protect, allowRoles("JOB_SEEKER"), async (req, res) => {
   try {
     const { jobId } = req.params
-    const { fullName, email, phone, cvFileName, coverNote } = req.body
+    const { fullName, email, phone, cvFileName,
+        cvFileUrl, coverNote } = req.body
 
     if (!fullName || !email) {
       return res.status(400).json({
@@ -139,6 +141,7 @@ router.post("/jobs/:jobId", protect, allowRoles("JOB_SEEKER"), async (req, res) 
         email,
         phone,
         cvFileName: cvFileName || "",
+        cvFileUrl: cvFileUrl || "",
         coverNote: coverNote || "",
         status: "SUBMITTED",
       },

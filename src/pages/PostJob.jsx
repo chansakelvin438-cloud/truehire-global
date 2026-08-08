@@ -13,16 +13,19 @@ import {
   MapPin,
   Phone,
   ShieldCheck,
+  Upload,
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
-import { createJob } from "../services/api"
+import { createJob, uploadCompanyLogo } from "../services/api"
 
-function getTodayInputDate() {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, "0")
-  const day = String(today.getDate()).padStart(2, "0")
+function getTomorrowInputDate() {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  const year = tomorrow.getFullYear()
+  const month = String(tomorrow.getMonth() + 1).padStart(2, "0")
+  const day = String(tomorrow.getDate()).padStart(2, "0")
 
   return `${year}-${month}-${day}`
 }
@@ -52,42 +55,65 @@ function PostJob() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [riskPreview, setRiskPreview] = useState(null)
+  const [logoPreview, setLogoPreview] = useState("")
+  const [selectedLogoName, setSelectedLogoName] = useState("")
+
+  function handleLogoPreview(event) {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      setLogoPreview("")
+      setSelectedLogoName("")
+      return
+    }
+
+    setSelectedLogoName(file.name)
+    setLogoPreview(URL.createObjectURL(file))
+  }
 
   async function handlePostJob(event) {
     event.preventDefault()
 
     const formData = new FormData(event.target)
     const deadline = formData.get("deadline")
+    const logoFile = formData.get("companyLogoFile")
 
     if (isPastOrToday(deadline)) {
       setError("Please choose a future application deadline.")
       return
     }
 
-    const newJob = {
-      title: formData.get("title"),
-      company:
-        formData.get("company") ||
-        currentUser.companyName ||
-        currentUser.employerProfile?.companyName ||
-        currentUser.displayName ||
-        "Employer Company",
-      companyLogo: formData.get("companyLogo") || "",
-      email: formData.get("email") || currentUser.email || "",
-      phone: formData.get("phone") || currentUser.phone || "",
-      location: formData.get("location"),
-      type: formData.get("type"),
-      category: formData.get("category"),
-      salary: formData.get("salary"),
-      deadline,
-      experience: formData.get("experience"),
-      description: formData.get("description"),
-      requirements: formData.get("requirements"),
-    }
-
     try {
       setLoading(true)
       setError("")
+
+      let companyLogo = ""
+
+      if (logoFile && logoFile.size > 0) {
+        const uploadResponse = await uploadCompanyLogo(logoFile)
+        companyLogo = uploadResponse.fileUrl
+      }
+
+      const newJob = {
+        title: formData.get("title"),
+        company:
+          formData.get("company") ||
+          currentUser.companyName ||
+          currentUser.employerProfile?.companyName ||
+          currentUser.displayName ||
+          "Employer Company",
+        companyLogo,
+        email: formData.get("email") || currentUser.email || "",
+        phone: formData.get("phone") || currentUser.phone || "",
+        location: formData.get("location"),
+        type: formData.get("type"),
+        category: formData.get("category"),
+        salary: formData.get("salary"),
+        deadline,
+        experience: formData.get("experience"),
+        description: formData.get("description"),
+        requirements: formData.get("requirements"),
+      }
 
       const response = await createJob(newJob)
 
@@ -261,7 +287,7 @@ function PostJob() {
                     label="Application Deadline"
                     name="deadline"
                     type="date"
-                    min={getTodayInputDate()}
+                    min={getTomorrowInputDate()}
                     required
                   />
 
@@ -292,13 +318,6 @@ function PostJob() {
                   />
 
                   <InputField
-                    icon={Image}
-                    label="Company Logo URL"
-                    name="companyLogo"
-                    placeholder="Paste company logo image link"
-                  />
-
-                  <InputField
                     icon={Mail}
                     label="Employer Email"
                     name="email"
@@ -315,6 +334,12 @@ function PostJob() {
                     defaultValue={currentUser.phone || ""}
                     placeholder="e.g. +260..."
                     required
+                  />
+
+                  <LogoUploadField
+                    logoPreview={logoPreview}
+                    selectedLogoName={selectedLogoName}
+                    onChange={handleLogoPreview}
                   />
                 </div>
 
@@ -430,11 +455,10 @@ function PostJob() {
                 </div>
 
                 <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-                  <h2 className="text-2xl font-extrabold">Logo Tip</h2>
+                  <h2 className="text-2xl font-extrabold">Logo Upload</h2>
 
                   <p className="mt-3 text-sm leading-7 text-zinc-400">
-                    Paste a direct image link for the company logo. Later, we can add
-                    proper logo file upload.
+                    Upload a JPG, PNG, WEBP, or SVG company logo. The maximum size is 2MB.
                   </p>
                 </div>
               </div>
@@ -490,6 +514,48 @@ function SelectField({ label, name, children }) {
       >
         {children}
       </select>
+    </div>
+  )
+}
+
+function LogoUploadField({ logoPreview, selectedLogoName, onChange }) {
+  return (
+    <div>
+      <label className="text-sm font-bold text-zinc-300">Company Logo</label>
+
+      <div className="mt-2 rounded-2xl border border-dashed border-white/20 bg-zinc-950 p-5">
+        <div className="flex items-start gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white">
+            {logoPreview ? (
+              <img
+                src={logoPreview}
+                alt="Company logo preview"
+                className="h-full w-full object-contain p-2"
+              />
+            ) : (
+              <Image size={26} className="text-zinc-950" />
+            )}
+          </div>
+
+          <div className="flex-1">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-yellow-400 px-5 py-2 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300">
+              <Upload size={16} />
+              Choose Logo
+              <input
+                type="file"
+                name="companyLogoFile"
+                accept=".jpg,.jpeg,.png,.webp,.svg"
+                onChange={onChange}
+                className="hidden"
+              />
+            </label>
+
+            <p className="mt-3 text-xs leading-5 text-zinc-500">
+              {selectedLogoName || "Accepted: JPG, PNG, WEBP, SVG. Maximum 2MB."}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

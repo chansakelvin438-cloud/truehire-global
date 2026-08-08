@@ -16,7 +16,11 @@ import {
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
-import { getPublicBackendJob, submitJobApplication } from "../services/api"
+import {
+  getPublicBackendJob,
+  submitJobApplication,
+  uploadCv,
+} from "../services/api"
 
 function Apply() {
   const { id } = useParams()
@@ -31,6 +35,7 @@ function Apply() {
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
+  const [selectedCvName, setSelectedCvName] = useState("")
 
   useEffect(() => {
     async function loadJob() {
@@ -53,6 +58,11 @@ function Apply() {
   const isClosed =
     job && (!job.canApply || job.isDeadlineReached || !job.isDeadlineValid)
 
+  function handleCvChange(event) {
+    const file = event.target.files?.[0]
+    setSelectedCvName(file ? file.name : "")
+  }
+
   async function handleApplication(event) {
     event.preventDefault()
 
@@ -64,17 +74,27 @@ function Apply() {
     const formData = new FormData(event.target)
     const cvFile = formData.get("cvFile")
 
-    const applicationData = {
-      fullName: formData.get("fullName"),
-      email: formData.get("email"),
-      phone: formData.get("phone"),
-      cvFileName: cvFile?.name || "",
-      coverNote: formData.get("coverNote"),
-    }
-
     try {
       setLoading(true)
       setError("")
+
+      let cvFileName = ""
+      let cvFileUrl = ""
+
+      if (cvFile && cvFile.size > 0) {
+        const uploadResponse = await uploadCv(cvFile)
+        cvFileName = uploadResponse.fileName || cvFile.name
+        cvFileUrl = uploadResponse.fileUrl || ""
+      }
+
+      const applicationData = {
+        fullName: formData.get("fullName"),
+        email: formData.get("email"),
+        phone: formData.get("phone"),
+        cvFileName,
+        cvFileUrl,
+        coverNote: formData.get("coverNote"),
+      }
 
       await submitJobApplication(id, applicationData)
 
@@ -286,12 +306,13 @@ function Apply() {
                               type="file"
                               name="cvFile"
                               accept=".pdf,.doc,.docx"
+                              onChange={handleCvChange}
                               className="w-full text-sm text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-yellow-400 file:px-5 file:py-2 file:text-sm file:font-bold file:text-zinc-950 hover:file:bg-yellow-300"
                             />
 
                             <p className="mt-3 text-xs leading-5 text-zinc-500">
-                              Your CV file name will be attached to the application.
-                              Full file upload storage will be added later.
+                              {selectedCvName ||
+                                "Accepted files: PDF, DOC, DOCX. Maximum 5MB."}
                             </p>
                           </div>
                         </div>

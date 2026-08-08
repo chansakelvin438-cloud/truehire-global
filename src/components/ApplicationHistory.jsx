@@ -2,12 +2,14 @@ import { useEffect, useState } from "react"
 import {
   AlertTriangle,
   BriefcaseBusiness,
-  CalendarDays,
+  Building2,
+  Calendar,
   CheckCircle2,
   Clock,
+  Download,
   FileText,
+  Mail,
   MapPin,
-  XCircle,
 } from "lucide-react"
 import { getMyApplications } from "../services/api"
 
@@ -17,22 +19,22 @@ function ApplicationHistory() {
   const [error, setError] = useState("")
 
   useEffect(() => {
-    async function loadApplications() {
-      try {
-        setLoading(true)
-        setError("")
-
-        const response = await getMyApplications()
-        setApplications(response.applications || [])
-      } catch (error) {
-        setError(error.message || "Failed to load applications")
-      } finally {
-        setLoading(false)
-      }
-    }
-
     loadApplications()
   }, [])
+
+  async function loadApplications() {
+    try {
+      setLoading(true)
+      setError("")
+
+      const response = await getMyApplications()
+      setApplications(response.applications || [])
+    } catch (error) {
+      setError(error.message || "Failed to load applications")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   function getStatusClass(status) {
     if (status === "Shortlisted") {
@@ -43,41 +45,28 @@ function ApplicationHistory() {
       return "bg-teal-400/10 text-teal-300"
     }
 
+    if (status === "Reviewed") {
+      return "bg-yellow-400/10 text-yellow-300"
+    }
+
     if (status === "Rejected") {
       return "bg-red-400/10 text-red-300"
     }
 
-    if (status === "Reviewed") {
-      return "bg-blue-400/10 text-blue-300"
-    }
-
-    return "bg-yellow-400/10 text-yellow-300"
-  }
-
-  function getStatusIcon(status) {
-    if (status === "Shortlisted" || status === "Interview Scheduled") {
-      return CheckCircle2
-    }
-
-    if (status === "Rejected") {
-      return XCircle
-    }
-
-    if (status === "Reviewed") {
-      return FileText
-    }
-
-    return Clock
+    return "bg-white/10 text-zinc-300"
   }
 
   return (
     <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h2 className="text-3xl font-extrabold">My Applications</h2>
+          <h2 className="flex items-center gap-3 text-3xl font-extrabold">
+            <BriefcaseBusiness size={28} className="text-teal-300" />
+            My Applications
+          </h2>
 
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            Track jobs you have applied for through TrueHire Global.
+            Track the jobs you have applied for and view your application status.
           </p>
         </div>
 
@@ -108,99 +97,110 @@ function ApplicationHistory() {
 
       {!loading && !error && applications.length > 0 && (
         <div className="mt-6 space-y-5">
-          {applications.map((application) => {
-            const StatusIcon = getStatusIcon(application.status)
-            const job = application.job || {}
+          {applications.map((application) => (
+            <div
+              key={application.id}
+              className="rounded-3xl border border-white/10 bg-zinc-950 p-6"
+            >
+              <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
+                <div className="flex-1">
+                  <div className="flex flex-wrap gap-2">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
+                        application.status
+                      )}`}
+                    >
+                      {application.status || "Submitted"}
+                    </span>
 
-            return (
-              <div
-                key={application.id}
-                className="rounded-3xl border border-white/10 bg-zinc-950 p-6"
-              >
-                <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
-                  <div>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full bg-teal-400/10 px-3 py-1 text-xs font-bold text-teal-300">
-                        {job.category || "General"}
-                      </span>
+                    <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold text-zinc-300">
+                      Applied: {application.appliedAt || application.createdAt || "Recently"}
+                    </span>
+                  </div>
 
-                      <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold text-zinc-300">
-                        {job.type || "Job"}
-                      </span>
+                  <h3 className="mt-4 text-2xl font-extrabold">
+                    {application.job?.title ||
+                      application.jobTitle ||
+                      "Job title unavailable"}
+                  </h3>
 
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
-                          application.status
-                        )}`}
-                      >
-                        <StatusIcon size={14} />
-                        {application.status || "Submitted"}
-                      </span>
-                    </div>
+                  <div className="mt-4 grid gap-3 text-sm text-zinc-400 md:grid-cols-2">
+                    <InfoLine
+                      icon={Building2}
+                      label="Company"
+                      value={
+                        application.job?.company ||
+                        application.company ||
+                        "Company unavailable"
+                      }
+                    />
 
-                    <h3 className="mt-4 text-2xl font-extrabold">
-                      {job.title || "Job title unavailable"}
-                    </h3>
+                    <InfoLine
+                      icon={MapPin}
+                      label="Location"
+                      value={
+                        application.job?.location ||
+                        application.location ||
+                        "Location unavailable"
+                      }
+                    />
 
-                    <p className="mt-2 text-sm font-bold text-zinc-300">
-                      {job.company || "Employer unavailable"}
+                    <InfoLine
+                      icon={Mail}
+                      label="Application Email"
+                      value={application.email}
+                    />
+
+                    <InfoLine
+                      icon={Calendar}
+                      label="Deadline"
+                      value={application.job?.deadline || application.deadline}
+                    />
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-zinc-500">
+                      <FileText size={15} className="text-yellow-300" />
+                      Submitted CV
                     </p>
 
-                    <div className="mt-3 flex flex-wrap gap-4 text-sm text-zinc-400">
-                      <span className="inline-flex items-center gap-2">
-                        <MapPin size={16} className="text-teal-300" />
-                        {job.location || "Location not specified"}
-                      </span>
-
-                      <span className="inline-flex items-center gap-2">
-                        <CalendarDays size={16} className="text-teal-300" />
-                        Applied: {application.submittedAt || "Not available"}
-                      </span>
-                    </div>
-
-                    {application.coverNote && (
-                      <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <h4 className="font-bold">Cover Note</h4>
-
-                        <p className="mt-2 text-sm leading-7 text-zinc-300">
-                          {application.coverNote}
-                        </p>
-                      </div>
-                    )}
-
-                    {application.cvFileName && (
-                      <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs font-bold text-zinc-300">
-                        <FileText size={15} className="text-teal-300" />
-                        CV: {application.cvFileName}
+                    {application.cvFileUrl ? (
+                      <a
+                        href={application.cvFileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-5 py-2 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
+                      >
+                        <Download size={16} />
+                        Open CV
+                      </a>
+                    ) : (
+                      <p className="mt-2 text-sm font-bold text-zinc-300">
+                        {application.cvFileName || "No CV attached"}
                       </p>
                     )}
                   </div>
 
-                  <div className="shrink-0 rounded-2xl border border-white/10 bg-white/5 p-5 text-center">
-                    <BriefcaseBusiness
-                      size={28}
-                      className="mx-auto text-yellow-300"
-                    />
+                  {application.coverNote && (
+                    <div className="mt-4 rounded-2xl border border-teal-400/20 bg-teal-400/10 p-4">
+                      <h4 className="font-bold text-teal-300">Cover Note</h4>
 
-                    <p className="mt-3 text-xs font-bold uppercase tracking-wide text-zinc-500">
-                      Status
-                    </p>
-
-                    <p className="mt-1 text-sm font-extrabold text-white">
-                      {application.status || "Submitted"}
-                    </p>
-                  </div>
+                      <p className="mt-2 text-sm leading-7 text-zinc-300">
+                        {application.coverNote}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
 
       {!loading && !error && applications.length === 0 && (
         <div className="mt-6 rounded-3xl border border-white/10 bg-zinc-950 p-10 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-500 text-zinc-950">
-            <BriefcaseBusiness size={32} />
+            <CheckCircle2 size={32} />
           </div>
 
           <h3 className="mt-6 text-2xl font-extrabold">
@@ -208,10 +208,25 @@ function ApplicationHistory() {
           </h3>
 
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-400">
-            Once you apply for jobs, your applications will appear here from the backend database.
+            Jobs you apply for will appear here with their latest application status.
           </p>
         </div>
       )}
+    </div>
+  )
+}
+
+function InfoLine({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-zinc-500">
+        <Icon size={15} className="text-teal-300" />
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-sm font-bold text-white">
+        {value || "Not provided"}
+      </p>
     </div>
   )
 }

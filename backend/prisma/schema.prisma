@@ -129,6 +129,7 @@ model Application {
   email       String
   phone       String?
   cvFileName  String?
+  cvFileUrl   String?
   coverNote   String?
   status      ApplicationStatus @default(SUBMITTED)
   createdAt   DateTime          @default(now())
