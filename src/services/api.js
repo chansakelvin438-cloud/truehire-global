@@ -86,3 +86,59 @@ export function updateEmployerApplicationStatus(applicationId, status) {
     body: JSON.stringify({ status }),
   })
 }
+
+export function getMyNotifications() {
+  return apiRequest("/notifications/my-notifications")
+}
+
+export function markNotificationAsRead(notificationId) {
+  return apiRequest(`/notifications/${notificationId}/read`, {
+    method: "PATCH",
+  })
+}
+
+export function markAllNotificationsAsRead() {
+  return apiRequest("/notifications/mark-all-read", {
+    method: "PATCH",
+  })
+}
+
+export function submitEmployerVerification(verificationData) {
+  return apiRequest("/employer-verifications", {
+    method: "POST",
+    body: JSON.stringify(verificationData),
+  })
+}
+
+export function getMyEmployerVerification() {
+  return apiRequest("/employer-verifications/my-verification")
+}
+
+export function getAdminEmployerVerifications() {
+  return apiRequest("/employer-verifications/admin/all")
+}
+
+export function updateEmployerVerificationStatus(verificationId, status) {
+  return apiRequest(`/employer-verifications/${verificationId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  })
+}
+
+export function submitSafetyReport(reportData) {
+  return apiRequest("/safety-reports", {
+    method: "POST",
+    body: JSON.stringify(reportData),
+  })
+}
+
+export function getAdminSafetyReports() {
+  return apiRequest("/safety-reports/admin/all")
+}
+
+export function updateSafetyReportStatus(reportId, status) {
+  return apiRequest(`/safety-reports/${reportId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  })
+}

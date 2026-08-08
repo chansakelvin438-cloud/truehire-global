@@ -4,6 +4,23 @@ import { protect, allowRoles } from "../middleware/authMiddleware.js"
 
 const router = express.Router()
 
+function parseDeadline(deadline) {
+  if (!deadline) return null
+
+  const parsedDate = new Date(`${deadline}T00:00:00`)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null
+  }
+
+  return parsedDate
+}
+
+function getTodayDateOnly() {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
 function formatApplicationStatus(status) {
   if (status === "SUBMITTED") return "Submitted"
   if (status === "REVIEWED") return "Reviewed"
@@ -81,11 +98,23 @@ router.post("/jobs/:jobId", protect, allowRoles("JOB_SEEKER"), async (req, res) 
       },
     })
 
+    
+
     if (!job) {
       return res.status(404).json({
         status: "error",
         message: "Job not found or not open for applications.",
       })
+    }
+
+    const deadlineDate = parseDeadline(job.deadline)
+    const today = getTodayDateOnly()
+
+    if (!deadlineDate || deadlineDate <= today) {
+    return res.status(400).json({
+        status: "error",
+        message: "This job is no longer accepting applications because the deadline has been reached.",
+    })
     }
 
     const existingApplication = await prisma.application.findFirst({

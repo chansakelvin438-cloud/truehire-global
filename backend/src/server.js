@@ -5,6 +5,9 @@ import morgan from "morgan"
 import authRoutes from "./routes/authRoutes.js"
 import jobRoutes from "./routes/jobRoutes.js"
 import applicationRoutes from "./routes/applicationRoutes.js"
+import notificationRoutes from "./routes/notificationRoutes.js"
+import employerVerificationRoutes from "./routes/employerVerificationRoutes.js"
+import safetyReportRoutes from "./routes/safetyReportRoutes.js"
 
 dotenv.config()
 
@@ -42,6 +45,9 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes)
 app.use("/api/jobs", jobRoutes)
 app.use("/applicationRoutes", applicationRoutes)
+app.use("/api/notifications", notificationRoutes)
+app.use("/api/employer-verifications", employerVerificationRoutes)
+app.use("/api/safety-reports", safetyReportRoutes)
 
 app.use((req, res) => {
   res.status(404).json({

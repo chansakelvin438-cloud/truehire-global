@@ -14,6 +14,7 @@ import {
   MapPin,
   Phone,
   ShieldCheck,
+  XCircle,
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
@@ -74,6 +75,7 @@ function JobDetails() {
         id: job.id,
         title: job.title,
         company: job.company,
+        companyLogo: job.companyLogo,
         location: job.location,
         category: job.category,
         type: job.type,
@@ -85,6 +87,9 @@ function JobDetails() {
     localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
     setSaved(true)
   }
+
+  const isClosed =
+    job && (!job.canApply || job.isDeadlineReached || !job.isDeadlineValid)
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
@@ -136,41 +141,76 @@ function JobDetails() {
             <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_390px] lg:items-start">
               <div>
                 <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl shadow-teal-500/10 md:p-10">
-                  <div className="flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-sm font-bold text-teal-300">
-                      <ShieldCheck size={16} />
-                      Admin Approved
-                    </span>
+                  <div className="flex flex-col gap-6 md:flex-row md:items-start">
+                    <CompanyLogo logo={job.companyLogo} company={job.company} />
 
-                    <span className="rounded-full bg-yellow-400/10 px-4 py-2 text-sm font-bold text-yellow-300">
-                      {job.type || "Job"}
-                    </span>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-sm font-bold text-teal-300">
+                          <ShieldCheck size={16} />
+                          Approved Listing
+                        </span>
 
-                    <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-zinc-300">
-                      {job.category || "General"}
-                    </span>
+                        <span className="rounded-full bg-yellow-400/10 px-4 py-2 text-sm font-bold text-yellow-300">
+                          {job.type || "Job"}
+                        </span>
+
+                        <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-zinc-300">
+                          {job.category || "General"}
+                        </span>
+
+                        <span
+                          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${
+                            isClosed
+                              ? "bg-red-400/10 text-red-300"
+                              : "bg-emerald-400/10 text-emerald-300"
+                          }`}
+                        >
+                          {isClosed ? (
+                            <XCircle size={16} />
+                          ) : (
+                            <CheckCircle2 size={16} />
+                          )}
+                          {isClosed ? job.deadlineStatus || "Closed" : "Open"}
+                        </span>
+                      </div>
+
+                      <h1 className="mt-6 text-5xl font-extrabold tracking-tight md:text-6xl">
+                        {job.title || "Untitled Job"}
+                      </h1>
+
+                      <div className="mt-5 flex flex-wrap gap-4 text-sm text-zinc-400">
+                        <span className="inline-flex items-center gap-2">
+                          <Building2 size={17} className="text-teal-300" />
+                          {job.company || "Verified Employer"}
+                        </span>
+
+                        <span className="inline-flex items-center gap-2">
+                          <MapPin size={17} className="text-teal-300" />
+                          {job.location || "Location not specified"}
+                        </span>
+
+                        <span className="inline-flex items-center gap-2">
+                          <CalendarDays size={17} className="text-teal-300" />
+                          Deadline: {job.deadline || "Not specified"}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <h1 className="mt-6 text-5xl font-extrabold tracking-tight md:text-6xl">
-                    {job.title || "Untitled Job"}
-                  </h1>
+                  {isClosed && (
+                    <div className="mt-8 rounded-2xl border border-red-400/20 bg-red-400/10 p-5">
+                      <h2 className="flex items-center gap-2 font-extrabold text-red-300">
+                        <XCircle size={22} />
+                        Applications Closed
+                      </h2>
 
-                  <div className="mt-5 flex flex-wrap gap-4 text-sm text-zinc-400">
-                    <span className="inline-flex items-center gap-2">
-                      <Building2 size={17} className="text-teal-300" />
-                      {job.company || "Verified Employer"}
-                    </span>
-
-                    <span className="inline-flex items-center gap-2">
-                      <MapPin size={17} className="text-teal-300" />
-                      {job.location || "Location not specified"}
-                    </span>
-
-                    <span className="inline-flex items-center gap-2">
-                      <CalendarDays size={17} className="text-teal-300" />
-                      Deadline: {job.deadline || "Not specified"}
-                    </span>
-                  </div>
+                      <p className="mt-2 text-sm leading-7 text-zinc-300">
+                        This job is no longer accepting applications because the deadline
+                        has been reached or the deadline date is invalid.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="mt-8 grid gap-4 md:grid-cols-3">
                     <InfoCard
@@ -216,9 +256,9 @@ function JobDetails() {
                   </h2>
 
                   <p className="mt-5 text-sm leading-8 text-zinc-300">
-                    This job is visible because it has been approved by admin. Still,
-                    never pay registration fees, application fees, interview fees,
+                    Never pay registration fees, application fees, interview fees,
                     medical fees, transport fees, or recruitment payments to get a job.
+                    Report any employer who asks for money.
                   </p>
                 </section>
               </div>
@@ -226,23 +266,45 @@ function JobDetails() {
               <aside className="lg:sticky lg:top-28 lg:h-fit">
                 <div className="space-y-6">
                   <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-teal-500/10">
-                    <div className="rounded-[1.5rem] border border-yellow-400/20 bg-yellow-400/10 p-6">
-                      <h2 className="text-2xl font-extrabold text-yellow-300">
-                        Apply for this job
+                    <div
+                      className={`rounded-[1.5rem] border p-6 ${
+                        isClosed
+                          ? "border-red-400/20 bg-red-400/10"
+                          : "border-yellow-400/20 bg-yellow-400/10"
+                      }`}
+                    >
+                      <h2
+                        className={`text-2xl font-extrabold ${
+                          isClosed ? "text-red-300" : "text-yellow-300"
+                        }`}
+                      >
+                        {isClosed ? "Applications Closed" : "Apply for this job"}
                       </h2>
 
                       <p className="mt-3 text-sm leading-7 text-zinc-300">
-                        Submit your application through TrueHire Global. You may need to
-                        sign in as a job seeker first.
+                        {isClosed
+                          ? "The application deadline has been reached, so job seekers cannot apply for this advert."
+                          : "Submit your application through TrueHire Global. You may need to sign in as a job seeker first."}
                       </p>
 
-                      <Link
-                        to={`/jobs/${job.id}/apply`}
-                        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-4 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
-                      >
-                        Apply Now
-                        <ArrowRight size={17} />
-                      </Link>
+                      {isClosed ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="mt-6 inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-2xl bg-zinc-700 px-5 py-4 text-sm font-extrabold text-zinc-400"
+                        >
+                          Applications Closed
+                          <XCircle size={17} />
+                        </button>
+                      ) : (
+                        <Link
+                          to={`/jobs/${job.id}/apply`}
+                          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-4 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
+                        >
+                          Apply Now
+                          <ArrowRight size={17} />
+                        </Link>
+                      )}
 
                       <button
                         type="button"
@@ -279,12 +341,11 @@ function JobDetails() {
                   <div className="rounded-[2rem] border border-emerald-400/20 bg-emerald-400/10 p-6">
                     <h2 className="flex items-center gap-2 text-2xl font-extrabold text-emerald-300">
                       <CheckCircle2 size={24} />
-                      Approved Listing
+                      Reviewed Advert
                     </h2>
 
                     <p className="mt-3 text-sm leading-7 text-zinc-300">
-                      This job was approved from the backend Admin Dashboard and is saved
-                      in the Prisma database.
+                      This job advert has passed review and is visible to job seekers.
                     </p>
                   </div>
 
@@ -316,6 +377,36 @@ function JobDetails() {
 
       <Footer />
     </main>
+  )
+}
+
+function CompanyLogo({ logo, company }) {
+  const [hasError, setHasError] = useState(false)
+
+  const initials = (company || "TH")
+    .split(" ")
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+
+  if (logo && !hasError) {
+    return (
+      <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-white">
+        <img
+          src={logo}
+          alt={`${company || "Company"} logo`}
+          className="h-full w-full object-contain p-3"
+          onError={() => setHasError(true)}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl border border-teal-400/20 bg-teal-400/10 text-2xl font-extrabold text-teal-300">
+      {initials}
+    </div>
   )
 }
 

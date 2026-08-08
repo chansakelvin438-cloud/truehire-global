@@ -97,6 +97,7 @@ model Job {
   employerId      String?
   title           String
   company         String
+  companyLogo     String?
   email           String
   phone           String?
   location        String

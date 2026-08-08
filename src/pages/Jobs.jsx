@@ -3,11 +3,13 @@ import { Link, useSearchParams } from "react-router-dom"
 import {
   ArrowRight,
   BriefcaseBusiness,
+  Building2,
   CheckCircle2,
   Filter,
   MapPin,
   Search,
   ShieldCheck,
+  XCircle,
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
@@ -108,8 +110,8 @@ function Jobs() {
               </h1>
 
               <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-400">
-                Browse approved jobs from the backend database. Only admin-approved
-                jobs appear publicly on TrueHire Global.
+                Browse approved jobs from reviewed employers. Only approved adverts
+                appear publicly on TrueHire Global.
               </p>
             </div>
 
@@ -118,12 +120,11 @@ function Jobs() {
                 <CheckCircle2 size={34} className="text-teal-300" />
 
                 <h2 className="mt-5 text-2xl font-extrabold">
-                  Backend jobs active
+                  Safer job discovery
                 </h2>
 
                 <p className="mt-3 text-sm leading-7 text-zinc-300">
-                  This page now reads approved job adverts from Prisma, not
-                  localStorage.
+                  Job adverts are reviewed before being made visible to job seekers.
                 </p>
               </div>
             </div>
@@ -243,7 +244,8 @@ function Jobs() {
                 </h2>
 
                 <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-zinc-400">
-                  Approve a job from the Admin Dashboard, then refresh this page.
+                  Try changing your search filters or check again later for new approved
+                  opportunities.
                 </p>
               </div>
             )}
@@ -257,50 +259,105 @@ function Jobs() {
 }
 
 function JobCard({ job }) {
+  const isClosed = !job.canApply || job.isDeadlineReached || !job.isDeadlineValid
+
   return (
     <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 transition hover:border-teal-400/40 hover:bg-white/[0.07]">
       <div className="flex flex-col justify-between gap-6 md:flex-row md:items-start">
-        <div>
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-teal-400/10 px-3 py-1 text-xs font-bold text-teal-300">
-              {job.category || "General"}
-            </span>
+        <div className="flex flex-col gap-5 md:flex-row md:items-start">
+          <CompanyLogo logo={job.companyLogo} company={job.company} />
 
-            <span className="rounded-full bg-yellow-400/10 px-3 py-1 text-xs font-bold text-yellow-300">
-              {job.type || "Job"}
-            </span>
+          <div>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-teal-400/10 px-3 py-1 text-xs font-bold text-teal-300">
+                {job.category || "General"}
+              </span>
 
-            <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300">
-              Admin Approved
-            </span>
+              <span className="rounded-full bg-yellow-400/10 px-3 py-1 text-xs font-bold text-yellow-300">
+                {job.type || "Job"}
+              </span>
+
+              <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300">
+                Approved
+              </span>
+
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${
+                  isClosed
+                    ? "bg-red-400/10 text-red-300"
+                    : "bg-emerald-400/10 text-emerald-300"
+                }`}
+              >
+                {isClosed ? <XCircle size={13} /> : <CheckCircle2 size={13} />}
+                {isClosed ? job.deadlineStatus || "Closed" : "Open"}
+              </span>
+            </div>
+
+            <h2 className="mt-4 text-2xl font-extrabold">
+              {job.title || "Untitled Job"}
+            </h2>
+
+            <p className="mt-2 text-sm font-bold text-zinc-300">
+              {job.company || "Verified Employer"}
+            </p>
+
+            <p className="mt-2 text-sm text-zinc-400">
+              {job.location || "Location not specified"} •{" "}
+              {job.salary || "Salary not specified"}
+            </p>
+
+            <p className="mt-2 text-sm text-zinc-500">
+              Deadline: {job.deadline || "Not specified"}
+            </p>
+
+            <p className="mt-4 line-clamp-2 max-w-4xl text-sm leading-7 text-zinc-400">
+              {job.description || "No description added."}
+            </p>
           </div>
-
-          <h2 className="mt-4 text-2xl font-extrabold">
-            {job.title || "Untitled Job"}
-          </h2>
-
-          <p className="mt-2 text-sm font-bold text-zinc-300">
-            {job.company || "Verified Employer"}
-          </p>
-
-          <p className="mt-2 text-sm text-zinc-400">
-            {job.location || "Location not specified"} •{" "}
-            {job.salary || "Salary not specified"}
-          </p>
-
-          <p className="mt-4 line-clamp-2 max-w-4xl text-sm leading-7 text-zinc-400">
-            {job.description || "No description added."}
-          </p>
         </div>
 
         <Link
           to={`/jobs/${job.id}`}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-yellow-400 px-6 py-3 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
+          className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold ${
+            isClosed
+              ? "border border-red-400/40 text-red-300 hover:bg-red-500 hover:text-white"
+              : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
+          }`}
         >
-          View Job
+          {isClosed ? "View Closed Job" : "View Job"}
           <ArrowRight size={17} />
         </Link>
       </div>
+    </div>
+  )
+}
+
+function CompanyLogo({ logo, company }) {
+  const initials = (company || "TH")
+    .split(" ")
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+
+  if (logo) {
+    return (
+      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white">
+        <img
+          src={logo}
+          alt={`${company || "Company"} logo`}
+          className="h-full w-full object-contain p-2"
+          onError={(event) => {
+            event.currentTarget.style.display = "none"
+          }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-teal-400/20 bg-teal-400/10 text-xl font-extrabold text-teal-300">
+      {initials}
     </div>
   )
 }

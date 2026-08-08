@@ -1,33 +1,68 @@
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import {
   AlertTriangle,
   ArrowRight,
   BadgeCheck,
   Building2,
   CheckCircle2,
-  FileCheck2,
-  Globe2,
+  FileText,
+  Globe,
   Hash,
   Mail,
   MapPin,
   Phone,
   ShieldCheck,
-  Upload,
   User,
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
+import {
+  getMyEmployerVerification,
+  submitEmployerVerification,
+} from "../services/api"
 
 function EmployerVerification() {
-  const navigate = useNavigate()
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
-  const savedStatus =
+  const employerProfile = currentUser.employerProfile || {}
+
+  const [loadingStatus, setLoadingStatus] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
+  const [verificationStatus, setVerificationStatus] = useState(
     localStorage.getItem("employerVerificationStatus") || "Verification Pending"
+  )
+  const [verification, setVerification] = useState(null)
 
-  const [submitted, setSubmitted] = useState(false)
+  useEffect(() => {
+    async function loadVerification() {
+      try {
+        setLoadingStatus(true)
+        setError("")
 
-  function handleSubmitVerification(event) {
+        const response = await getMyEmployerVerification()
+
+        setVerificationStatus(
+          response.verificationStatus || "Verification Pending"
+        )
+        setVerification(response.verification || null)
+
+        localStorage.setItem(
+          "employerVerificationStatus",
+          response.verificationStatus || "Verification Pending"
+        )
+      } catch (error) {
+        setError(error.message || "Failed to load verification status")
+      } finally {
+        setLoadingStatus(false)
+      }
+    }
+
+    loadVerification()
+  }, [])
+
+  async function handleVerificationSubmit(event) {
     event.preventDefault()
 
     const formData = new FormData(event.target)
@@ -36,46 +71,41 @@ function EmployerVerification() {
     const taxDocumentFile = formData.get("taxDocumentFile")
     const authorizationLetterFile = formData.get("authorizationLetterFile")
 
-    const verificationRequest = {
-      id: Date.now(),
-      companyName:
-        formData.get("companyName") ||
-        currentUser.companyName ||
-        currentUser.displayName ||
-        "Employer Company",
-      email: formData.get("email") || currentUser.email || "",
-      phone: formData.get("phone") || currentUser.phone || "",
+    const verificationData = {
+      companyName: formData.get("companyName"),
+      email: formData.get("email"),
+      phone: formData.get("phone"),
       companyRegistrationNumber: formData.get("companyRegistrationNumber"),
       tpin: formData.get("tpin"),
       businessType: formData.get("businessType"),
       address: formData.get("address"),
       contactPerson: formData.get("contactPerson"),
       website: formData.get("website"),
-      businessRegistrationFileName:
-        businessRegistrationFile?.name || "No business registration uploaded",
-      taxDocumentFileName: taxDocumentFile?.name || "No tax document uploaded",
-      authorizationLetterFileName:
-        authorizationLetterFile?.name || "No authorization letter uploaded",
-      status: "Submitted for Review",
-      submittedAt: new Date().toLocaleDateString("en-GB"),
+      businessRegistrationFileName: businessRegistrationFile?.name || "",
+      taxDocumentFileName: taxDocumentFile?.name || "",
+      authorizationLetterFileName: authorizationLetterFile?.name || "",
     }
 
-    const savedRequests = JSON.parse(
-      localStorage.getItem("employerVerificationRequests") || "[]"
-    )
+    try {
+      setSubmitting(true)
+      setError("")
+      setSuccess(false)
 
-    localStorage.setItem(
-      "employerVerificationRequests",
-      JSON.stringify([verificationRequest, ...savedRequests])
-    )
+      const response = await submitEmployerVerification(verificationData)
 
-    localStorage.setItem("employerVerificationStatus", "Submitted for Review")
+      setVerificationStatus(response.verification?.status || "Submitted for Review")
+      setVerification(response.verification || null)
+      setSuccess(true)
 
-    setSubmitted(true)
-
-    setTimeout(() => {
-      navigate("/employer-dashboard")
-    }, 1400)
+      localStorage.setItem(
+        "employerVerificationStatus",
+        response.verification?.status || "Submitted for Review"
+      )
+    } catch (error) {
+      setError(error.message || "Failed to submit employer verification")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function getStatusClass(status) {
@@ -114,47 +144,65 @@ function EmployerVerification() {
             ← Back to Employer Dashboard
           </Link>
 
-          <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_390px]">
+          <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_390px] lg:items-start">
             <div>
               <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl shadow-teal-500/10 md:p-10">
                 <p className="inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-4 py-2 text-sm font-bold text-teal-300">
                   <ShieldCheck size={16} />
-                  Employer verification
+                  Employer Verification
                 </p>
 
                 <h1 className="mt-6 text-5xl font-extrabold tracking-tight md:text-6xl">
-                  Build employer trust before hiring.
+                  Verify your employer account.
                 </h1>
 
                 <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-400">
-                  Submit company details for admin review. Verified employers receive
-                  stronger trust status across TrueHire Global.
+                  Submit your company details for review so job seekers can trust your
+                  adverts and your organisation.
                 </p>
               </div>
 
-              {submitted && (
-                <div className="mt-8 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-6">
-                  <h2 className="flex items-center gap-2 text-2xl font-extrabold text-emerald-300">
-                    <CheckCircle2 size={24} />
-                    Verification request submitted.
-                  </h2>
-
-                  <p className="mt-3 text-sm leading-7 text-zinc-300">
-                    Your company verification details have been sent for admin review.
-                    Your employer dashboard will show the updated verification status.
+              {loadingStatus && (
+                <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 text-center">
+                  <p className="text-sm font-bold text-teal-300">
+                    Loading verification status...
                   </p>
                 </div>
               )}
 
+              {success && (
+                <div className="mt-8 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-6">
+                  <h2 className="flex items-center gap-2 text-2xl font-extrabold text-emerald-300">
+                    <CheckCircle2 size={24} />
+                    Verification submitted successfully.
+                  </h2>
+
+                  <p className="mt-3 text-sm leading-7 text-zinc-300">
+                    Your employer verification request has been submitted for review.
+                  </p>
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-8 rounded-3xl border border-red-400/20 bg-red-400/10 p-6">
+                  <h2 className="flex items-center gap-2 font-extrabold text-red-300">
+                    <AlertTriangle size={22} />
+                    Verification issue
+                  </h2>
+
+                  <p className="mt-3 text-sm leading-7 text-zinc-300">{error}</p>
+                </div>
+              )}
+
               <form
-                onSubmit={handleSubmitVerification}
+                onSubmit={handleVerificationSubmit}
                 className="mt-8 rounded-[2rem] border border-white/10 bg-white/5 p-8"
               >
                 <h2 className="text-3xl font-extrabold">Company Details</h2>
 
                 <p className="mt-3 text-sm leading-6 text-zinc-400">
-                  Use accurate company information. Admin will review these details before
-                  approving stronger employer trust status.
+                  Use the correct registered company details. False or misleading
+                  information may lead to rejection.
                 </p>
 
                 <div className="mt-8 grid gap-5 md:grid-cols-2">
@@ -163,17 +211,45 @@ function EmployerVerification() {
                     label="Company Name"
                     name="companyName"
                     defaultValue={
-                      currentUser.companyName || currentUser.displayName || ""
+                      verification?.companyName ||
+                      employerProfile.companyName ||
+                      currentUser.companyName ||
+                      currentUser.displayName ||
+                      ""
                     }
                     placeholder="Enter registered company name"
                     required
                   />
 
                   <InputField
+                    icon={Mail}
+                    label="Company Email"
+                    name="email"
+                    type="email"
+                    defaultValue={verification?.email || currentUser.email || ""}
+                    placeholder="company@example.com"
+                    required
+                  />
+
+                  <InputField
+                    icon={Phone}
+                    label="Company Phone"
+                    name="phone"
+                    defaultValue={
+                      verification?.phone ||
+                      employerProfile.phone ||
+                      currentUser.phone ||
+                      ""
+                    }
+                    placeholder="e.g. +260..."
+                  />
+
+                  <InputField
                     icon={Hash}
                     label="Company Registration Number"
                     name="companyRegistrationNumber"
-                    placeholder="Enter PACRA/company registration number"
+                    defaultValue={verification?.companyRegistrationNumber || ""}
+                    placeholder="Enter registration number"
                     required
                   />
 
@@ -181,93 +257,78 @@ function EmployerVerification() {
                     icon={Hash}
                     label="TPIN"
                     name="tpin"
+                    defaultValue={verification?.tpin || ""}
                     placeholder="Enter company TPIN"
                     required
                   />
 
-                  <SelectField label="Business Type" name="businessType">
-                    <option>Limited Company</option>
-                    <option>Sole Proprietor</option>
-                    <option>Partnership</option>
-                    <option>NGO</option>
-                    <option>Government Institution</option>
-                    <option>Other</option>
+                  <SelectField
+                    label="Business Type"
+                    name="businessType"
+                    defaultValue={verification?.businessType || ""}
+                  >
+                    <option value="">Select business type</option>
+                    <option value="Private Limited Company">
+                      Private Limited Company
+                    </option>
+                    <option value="Sole Proprietorship">
+                      Sole Proprietorship
+                    </option>
+                    <option value="Partnership">Partnership</option>
+                    <option value="NGO">NGO</option>
+                    <option value="Government Institution">
+                      Government Institution
+                    </option>
+                    <option value="Other">Other</option>
                   </SelectField>
+
+                  <InputField
+                    icon={User}
+                    label="Contact Person"
+                    name="contactPerson"
+                    defaultValue={verification?.contactPerson || currentUser.displayName || ""}
+                    placeholder="Name of authorised contact person"
+                    required
+                  />
+
+                  <InputField
+                    icon={Globe}
+                    label="Website"
+                    name="website"
+                    defaultValue={verification?.website || employerProfile.website || ""}
+                    placeholder="https://company.com"
+                  />
 
                   <div className="md:col-span-2">
                     <InputField
                       icon={MapPin}
-                      label="Business Address"
+                      label="Physical Address"
                       name="address"
-                      placeholder="Enter physical business address"
+                      defaultValue={verification?.address || employerProfile.address || ""}
+                      placeholder="Enter company physical address"
                       required
                     />
                   </div>
                 </div>
 
                 <h2 className="mt-10 text-3xl font-extrabold">
-                  Contact Information
-                </h2>
-
-                <div className="mt-8 grid gap-5 md:grid-cols-2">
-                  <InputField
-                    icon={User}
-                    label="Contact Person"
-                    name="contactPerson"
-                    placeholder="Full name of authorised contact person"
-                    required
-                  />
-
-                  <InputField
-                    icon={Mail}
-                    label="Business Email"
-                    name="email"
-                    type="email"
-                    defaultValue={currentUser.email || ""}
-                    placeholder="company@example.com"
-                    required
-                  />
-
-                  <InputField
-                    icon={Phone}
-                    label="Phone Number"
-                    name="phone"
-                    defaultValue={currentUser.phone || ""}
-                    placeholder="e.g. +260..."
-                    required
-                  />
-
-                  <InputField
-                    icon={Globe2}
-                    label="Website"
-                    name="website"
-                    placeholder="https://example.com"
-                  />
-                </div>
-
-                <h2 className="mt-10 text-3xl font-extrabold">
-                  Verification Documents
+                  Supporting Documents
                 </h2>
 
                 <p className="mt-3 text-sm leading-6 text-zinc-400">
-                  For now, the front-end stores file names only. Real document upload and
-                  secure storage will be handled later by the backend.
+                  For now, TrueHire records the document names. Full secure document
+                  upload storage will be added later.
                 </p>
 
-                <div className="mt-8 grid gap-5">
-                  <FileUploadField
-                    label="Business Registration Document"
+                <div className="mt-8 grid gap-5 md:grid-cols-3">
+                  <FileInputField
+                    label="Business Registration"
                     name="businessRegistrationFile"
-                    required
                   />
 
-                  <FileUploadField
-                    label="Tax / TPIN Document"
-                    name="taxDocumentFile"
-                    required
-                  />
+                  <FileInputField label="Tax Document" name="taxDocumentFile" />
 
-                  <FileUploadField
+                  <FileInputField
                     label="Authorization Letter"
                     name="authorizationLetterFile"
                   />
@@ -276,26 +337,26 @@ function EmployerVerification() {
                 <div className="mt-8 rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-5">
                   <h3 className="flex items-center gap-2 font-bold text-yellow-300">
                     <AlertTriangle size={20} />
-                    Review notice
+                    Review Notice
                   </h3>
 
                   <p className="mt-2 text-sm leading-6 text-zinc-300">
-                    Submitting verification does not automatically approve the employer.
-                    Admin must review and approve the request from the Admin Dashboard.
+                    Submitting verification does not automatically approve the employer
+                    account. Admin review is required.
                   </p>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={submitted}
+                  disabled={submitting}
                   className={`mt-8 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-extrabold ${
-                    submitted
+                    submitting
                       ? "cursor-not-allowed bg-zinc-700 text-zinc-400"
                       : "bg-yellow-400 text-zinc-950 hover:bg-yellow-300"
                   }`}
                 >
-                  {submitted ? "Submitted for Review" : "Submit Verification"}
-                  {!submitted && <ArrowRight size={17} />}
+                  {submitting ? "Submitting Verification..." : "Submit Verification"}
+                  {!submitting && <ArrowRight size={17} />}
                 </button>
               </form>
             </div>
@@ -303,67 +364,48 @@ function EmployerVerification() {
             <aside className="lg:sticky lg:top-28 lg:h-fit">
               <div className="space-y-6">
                 <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-teal-500/10">
-                  <div
-                    className={`rounded-[1.5rem] border p-6 ${getStatusClass(
-                      savedStatus
-                    )}`}
-                  >
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-950">
-                      <BadgeCheck size={30} />
-                    </div>
+                  <div className={`rounded-[1.5rem] border p-6 ${getStatusClass(verificationStatus)}`}>
+                    <BadgeCheck size={34} />
 
                     <h2 className="mt-5 text-2xl font-extrabold">
-                      Current Status
+                      {verificationStatus}
                     </h2>
 
-                    <p className="mt-2 text-3xl font-extrabold">{savedStatus}</p>
-
                     <p className="mt-3 text-sm leading-7 text-zinc-300">
-                      This status will change after admin reviews the employer
-                      verification request.
+                      This status shows the latest review stage for your employer
+                      account.
                     </p>
                   </div>
                 </div>
 
+                {verification && (
+                  <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+                    <h2 className="text-2xl font-extrabold">Latest Request</h2>
+
+                    <div className="mt-5 space-y-4 text-sm text-zinc-300">
+                      <SummaryItem label="Company" value={verification.companyName} />
+                      <SummaryItem label="TPIN" value={verification.tpin} />
+                      <SummaryItem
+                        label="Registration"
+                        value={verification.companyRegistrationNumber}
+                      />
+                      <SummaryItem
+                        label="Submitted"
+                        value={verification.submittedAt}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="rounded-[2rem] border border-teal-400/20 bg-teal-400/10 p-6">
                   <h2 className="text-2xl font-extrabold text-teal-300">
-                    Verification Benefits
-                  </h2>
-
-                  <div className="mt-5 space-y-3 text-sm text-zinc-300">
-                    <ChecklistItem text="Build trust with job seekers" />
-                    <ChecklistItem text="Strengthen employer profile credibility" />
-                    <ChecklistItem text="Support safer hiring on the platform" />
-                    <ChecklistItem text="Prepare for future paid job posting" />
-                  </div>
-                </div>
-
-                <div className="rounded-[2rem] border border-red-400/20 bg-red-400/10 p-6">
-                  <h2 className="text-2xl font-extrabold text-red-300">
-                    Safety Rule
+                    Why verification matters
                   </h2>
 
                   <p className="mt-3 text-sm leading-7 text-zinc-300">
-                    Verified employers must not ask applicants to pay registration,
-                    application, interview, medical, or recruitment fees.
+                    Verified employers improve applicant trust and help TrueHire reduce
+                    fake job adverts.
                   </p>
-                </div>
-
-                <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-                  <h2 className="text-2xl font-extrabold">Admin Review</h2>
-
-                  <p className="mt-3 text-sm leading-7 text-zinc-400">
-                    Verification requests appear in the Admin Dashboard where admin can
-                    approve, flag, or reject the employer.
-                  </p>
-
-                  <Link
-                    to="/employer-dashboard"
-                    className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-400/40 px-5 py-3 text-sm font-bold text-teal-300 hover:bg-teal-500 hover:text-zinc-950"
-                  >
-                    Employer Dashboard
-                    <ArrowRight size={17} />
-                  </Link>
                 </div>
               </div>
             </aside>
@@ -405,13 +447,15 @@ function InputField({
   )
 }
 
-function SelectField({ label, name, children }) {
+function SelectField({ label, name, children, defaultValue = "" }) {
   return (
     <div>
       <label className="text-sm font-bold text-zinc-300">{label}</label>
 
       <select
         name={name}
+        required
+        defaultValue={defaultValue}
         className="mt-2 w-full rounded-2xl border border-white/10 bg-zinc-900 px-4 py-4 text-sm text-white outline-none focus:border-teal-400"
       >
         {children}
@@ -420,41 +464,36 @@ function SelectField({ label, name, children }) {
   )
 }
 
-function FileUploadField({ label, name, required = false }) {
+function FileInputField({ label, name }) {
   return (
-    <div className="rounded-2xl border border-dashed border-white/20 bg-zinc-950 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-500 text-zinc-950">
-            <Upload size={25} />
-          </div>
+    <div className="rounded-2xl border border-dashed border-white/20 bg-zinc-950 p-5">
+      <FileText size={24} className="text-teal-300" />
 
-          <div>
-            <p className="font-bold text-white">{label}</p>
-            <p className="mt-1 text-xs text-zinc-500">
-              Accepted formats: PDF, DOC, DOCX, JPG, PNG
-            </p>
-          </div>
-        </div>
+      <label className="mt-4 block text-sm font-bold text-zinc-300">
+        {label}
+      </label>
 
-        <input
-          name={name}
-          type="file"
-          required={required}
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300 outline-none focus:border-teal-400 md:max-w-xs"
-        />
-      </div>
+      <input
+        type="file"
+        name={name}
+        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+        className="mt-4 w-full text-xs text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-yellow-400 file:px-4 file:py-2 file:text-xs file:font-bold file:text-zinc-950 hover:file:bg-yellow-300"
+      />
     </div>
   )
 }
 
-function ChecklistItem({ text }) {
+function SummaryItem({ label, value }) {
   return (
-    <p className="flex items-center gap-2">
-      <FileCheck2 size={17} className="text-teal-300" />
-      <span>{text}</span>
-    </p>
+    <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-sm font-bold text-white">
+        {value || "Not provided"}
+      </p>
+    </div>
   )
 }
 

@@ -26,11 +26,54 @@ function parseReasons(reasons) {
   }
 }
 
+function parseDeadline(deadline) {
+  if (!deadline) return null
+
+  const parsedDate = new Date(`${deadline}T00:00:00`)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null
+  }
+
+  return parsedDate
+}
+
+function getTodayDateOnly() {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
+function getDeadlineInfo(deadline) {
+  const deadlineDate = parseDeadline(deadline)
+
+  if (!deadlineDate) {
+    return {
+      isDeadlineValid: false,
+      isDeadlineReached: true,
+      canApply: false,
+      deadlineStatus: "Invalid date",
+    }
+  }
+
+  const today = getTodayDateOnly()
+  const isDeadlineReached = deadlineDate <= today
+
+  return {
+    isDeadlineValid: true,
+    isDeadlineReached,
+    canApply: !isDeadlineReached,
+    deadlineStatus: isDeadlineReached ? "Deadline reached" : "Open",
+  }
+}
+
 function formatJob(job) {
+  const deadlineInfo = getDeadlineInfo(job.deadline)
+
   return {
     id: job.id,
     title: job.title,
     company: job.company,
+    companyLogo: job.companyLogo,
     email: job.email,
     phone: job.phone,
     location: job.location,
@@ -50,6 +93,7 @@ function formatJob(job) {
     submittedAt: new Intl.DateTimeFormat("en-GB").format(job.createdAt),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
+    ...deadlineInfo,
   }
 }
 
@@ -126,6 +170,7 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
     const {
       title,
       company,
+      companyLogo,
       email,
       phone,
       location,
@@ -153,9 +198,26 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
       })
     }
 
+    const deadlineInfo = getDeadlineInfo(deadline)
+
+    if (!deadlineInfo.isDeadlineValid) {
+      return res.status(400).json({
+        status: "error",
+        message: "Please choose a valid application deadline.",
+      })
+    }
+
+    if (deadlineInfo.isDeadlineReached) {
+      return res.status(400).json({
+        status: "error",
+        message: "Deadline must be a future date.",
+      })
+    }
+
     const jobData = {
       title,
       company: company || employerProfile.companyName,
+      companyLogo: companyLogo || "",
       email: email || req.user.email,
       phone: phone || req.user.phone || employerProfile.phone,
       location,
@@ -196,6 +258,7 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
     })
   }
 })
+
 router.get("/admin/all-jobs", protect, allowRoles("ADMIN"), async (req, res) => {
   try {
     const jobs = await prisma.job.findMany({
@@ -256,6 +319,7 @@ router.patch("/:id/status", protect, allowRoles("ADMIN"), async (req, res) => {
     }
 
     const risk = analyseJobRisk(existingJob)
+    const deadlineInfo = getDeadlineInfo(existingJob.deadline)
 
     let finalStatus = newStatus
     let adminNote = existingJob.adminNote || ""
@@ -264,6 +328,12 @@ router.patch("/:id/status", protect, allowRoles("ADMIN"), async (req, res) => {
       finalStatus = "FLAGGED"
       adminNote =
         "This job was automatically flagged because it contains high-risk scam indicators. Admin cannot approve jobs that ask applicants to pay money."
+    }
+
+    if (newStatus === "APPROVED" && !deadlineInfo.canApply) {
+      finalStatus = "REJECTED"
+      adminNote =
+        "This job cannot be approved because the application deadline is invalid or has already been reached."
     }
 
     const updatedJob = await prisma.job.update({

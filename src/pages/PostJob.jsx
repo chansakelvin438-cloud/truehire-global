@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   CreditCard,
   FileText,
+  Image,
   Mail,
   MapPin,
   Phone,
@@ -16,6 +17,29 @@ import {
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
 import { createJob } from "../services/api"
+
+function getTodayInputDate() {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, "0")
+  const day = String(today.getDate()).padStart(2, "0")
+
+  return `${year}-${month}-${day}`
+}
+
+function isPastOrToday(dateValue) {
+  if (!dateValue) return true
+
+  const selectedDate = new Date(`${dateValue}T00:00:00`)
+  const today = new Date()
+  const todayOnly = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  )
+
+  return selectedDate <= todayOnly
+}
 
 function PostJob() {
   const navigate = useNavigate()
@@ -33,6 +57,12 @@ function PostJob() {
     event.preventDefault()
 
     const formData = new FormData(event.target)
+    const deadline = formData.get("deadline")
+
+    if (isPastOrToday(deadline)) {
+      setError("Please choose a future application deadline.")
+      return
+    }
 
     const newJob = {
       title: formData.get("title"),
@@ -42,13 +72,14 @@ function PostJob() {
         currentUser.employerProfile?.companyName ||
         currentUser.displayName ||
         "Employer Company",
+      companyLogo: formData.get("companyLogo") || "",
       email: formData.get("email") || currentUser.email || "",
       phone: formData.get("phone") || currentUser.phone || "",
       location: formData.get("location"),
       type: formData.get("type"),
       category: formData.get("category"),
       salary: formData.get("salary"),
-      deadline: formData.get("deadline"),
+      deadline,
       experience: formData.get("experience"),
       description: formData.get("description"),
       requirements: formData.get("requirements"),
@@ -119,8 +150,8 @@ function PostJob() {
                 </h1>
 
                 <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-400">
-                  Post a job advert for admin review. The advert will be saved in
-                  the backend database and will only appear publicly after approval.
+                  Post a job advert for review. It will only appear publicly after
+                  approval.
                 </p>
               </div>
 
@@ -128,13 +159,12 @@ function PostJob() {
                 <div className="mt-8 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-6">
                   <h2 className="flex items-center gap-2 text-2xl font-extrabold text-emerald-300">
                     <CheckCircle2 size={24} />
-                    Job submitted for admin review.
+                    Job submitted for review.
                   </h2>
 
                   <p className="mt-3 text-sm leading-7 text-zinc-300">
-                    Your advert has been saved in the database with payment disabled.
-                    It will appear in the Admin Dashboard once we connect admin review to
-                    the backend.
+                    Your advert has been submitted successfully. It will appear publicly
+                    after approval.
                   </p>
 
                   {riskPreview && (
@@ -143,7 +173,7 @@ function PostJob() {
                         riskPreview.level
                       )}`}
                     >
-                      <h3 className="font-bold">Scam Risk Preview</h3>
+                      <h3 className="font-bold">Safety Review Preview</h3>
 
                       <p className="mt-2 text-sm text-zinc-300">
                         Risk Level:{" "}
@@ -180,8 +210,8 @@ function PostJob() {
                 <h2 className="text-3xl font-extrabold">Job Details</h2>
 
                 <p className="mt-3 text-sm leading-6 text-zinc-400">
-                  Provide clear information. Avoid payment-related wording because scam
-                  detection will flag suspicious adverts.
+                  Provide clear job details. Avoid asking applicants for any form of
+                  payment.
                 </p>
 
                 <div className="mt-8 grid gap-5 md:grid-cols-2">
@@ -230,7 +260,8 @@ function PostJob() {
                     icon={FileText}
                     label="Application Deadline"
                     name="deadline"
-                    placeholder="e.g. 30 August 2026"
+                    type="date"
+                    min={getTodayInputDate()}
                     required
                   />
 
@@ -261,6 +292,13 @@ function PostJob() {
                   />
 
                   <InputField
+                    icon={Image}
+                    label="Company Logo URL"
+                    name="companyLogo"
+                    placeholder="Paste company logo image link"
+                  />
+
+                  <InputField
                     icon={Mail}
                     label="Employer Email"
                     name="email"
@@ -270,16 +308,14 @@ function PostJob() {
                     required
                   />
 
-                  <div className="md:col-span-2">
-                    <InputField
-                      icon={Phone}
-                      label="Phone Number"
-                      name="phone"
-                      defaultValue={currentUser.phone || ""}
-                      placeholder="e.g. +260..."
-                      required
-                    />
-                  </div>
+                  <InputField
+                    icon={Phone}
+                    label="Phone Number"
+                    name="phone"
+                    defaultValue={currentUser.phone || ""}
+                    placeholder="e.g. +260..."
+                    required
+                  />
                 </div>
 
                 <h2 className="mt-10 text-3xl font-extrabold">
@@ -322,8 +358,8 @@ function PostJob() {
 
                   <p className="mt-2 text-sm leading-6 text-zinc-300">
                     Do not ask applicants for registration fees, application fees,
-                    interview fees, medical fees, transport fees, or recruitment payments.
-                    Such adverts will be flagged or rejected.
+                    interview fees, medical fees, transport fees, or recruitment
+                    payments. Such adverts will be flagged or rejected.
                   </p>
                 </div>
 
@@ -394,15 +430,12 @@ function PostJob() {
                 </div>
 
                 <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-                  <h2 className="text-2xl font-extrabold">Posting Checklist</h2>
+                  <h2 className="text-2xl font-extrabold">Logo Tip</h2>
 
-                  <div className="mt-5 space-y-3 text-sm text-zinc-400">
-                    <p>✓ Use a real company name</p>
-                    <p>✓ Add clear job duties</p>
-                    <p>✓ Add honest requirements</p>
-                    <p>✓ Avoid suspicious payment wording</p>
-                    <p>✓ Wait for admin approval</p>
-                  </div>
+                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                    Paste a direct image link for the company logo. Later, we can add
+                    proper logo file upload.
+                  </p>
                 </div>
               </div>
             </aside>
@@ -423,6 +456,7 @@ function InputField({
   placeholder,
   defaultValue = "",
   required = false,
+  min,
 }) {
   return (
     <div>
@@ -435,6 +469,7 @@ function InputField({
           name={name}
           type={type}
           required={required}
+          min={min}
           defaultValue={defaultValue}
           placeholder={placeholder}
           className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
