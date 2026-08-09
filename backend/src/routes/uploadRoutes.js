@@ -165,6 +165,30 @@ function sendUploadedFileResponse(req, res, publicPath, successMessage) {
   })
 }
 
+function sendProtectedUploadedFileResponse(
+  req,
+  res,
+  protectedPath,
+  successMessage
+) {
+  if (!req.file) {
+    return res.status(400).json({
+      status: "error",
+      message: "No file uploaded.",
+    })
+  }
+
+  const baseUrl = getBaseUrl(req)
+
+  return res.status(201).json({
+    status: "success",
+    message: successMessage,
+    fileName: req.file.originalname,
+    storedFileName: req.file.filename,
+    fileUrl: `${baseUrl}${protectedPath}/${req.file.filename}`,
+  })
+}
+
 router.post(
   "/company-logo",
   protect,
@@ -196,10 +220,10 @@ router.post(
   cvUpload.single("file"),
   (req, res) => {
     try {
-      return sendUploadedFileResponse(
+      return sendProtectedUploadedFileResponse(
         req,
         res,
-        "/uploads/cvs",
+        "/api/files/cvs",
         "CV uploaded successfully."
       )
     } catch (error) {
@@ -220,10 +244,10 @@ router.post(
   businessRegistrationUpload.single("file"),
   (req, res) => {
     try {
-      return sendUploadedFileResponse(
+      return sendProtectedUploadedFileResponse(
         req,
         res,
-        "/uploads/verification-documents/business-registration",
+        "/api/files/verification/business-registration",
         "Business registration document uploaded successfully."
       )
     } catch (error) {
@@ -244,10 +268,10 @@ router.post(
   taxDocumentUpload.single("file"),
   (req, res) => {
     try {
-      return sendUploadedFileResponse(
+      return sendProtectedUploadedFileResponse(
         req,
         res,
-        "/uploads/verification-documents/tax-documents",
+        "/api/files/verification/tax-documents",
         "Tax document uploaded successfully."
       )
     } catch (error) {
@@ -268,10 +292,10 @@ router.post(
   authorizationLetterUpload.single("file"),
   (req, res) => {
     try {
-      return sendUploadedFileResponse(
+      return sendProtectedUploadedFileResponse(
         req,
         res,
-        "/uploads/verification-documents/authorization-letters",
+        "/api/files/verification/authorization-letters",
         "Authorization letter uploaded successfully."
       )
     } catch (error) {

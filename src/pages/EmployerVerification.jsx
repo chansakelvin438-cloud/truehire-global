@@ -25,6 +25,7 @@ import {
   uploadBusinessRegistrationDocument,
   uploadTaxDocument,
 } from "../services/api"
+import ProtectedFileButton from "../components/ProtectedFileButton"
 
 function EmployerVerification() {
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
@@ -609,15 +610,11 @@ function DocumentLink({ label, fileName, fileUrl }) {
       </p>
 
       {fileUrl ? (
-        <a
-          href={fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-xs font-extrabold text-zinc-950 hover:bg-yellow-300"
-        >
-          <Download size={15} />
-          Open Document
-        </a>
+        <ProtectedFileButton
+            fileUrl={fileUrl}
+            label="Open Document"
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-xs font-extrabold text-zinc-950 hover:bg-yellow-300"
+        />
       ) : (
         <p className="mt-2 break-words text-sm font-bold text-zinc-300">
           {fileName || "No document attached"}

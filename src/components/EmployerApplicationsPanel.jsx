@@ -15,6 +15,7 @@ import {
   getEmployerApplications,
   updateEmployerApplicationStatus,
 } from "../services/api"
+import ProtectedFileButton from "./ProtectedFileButton"
 
 function EmployerApplicationsPanel() {
   const [applications, setApplications] = useState([])
@@ -207,15 +208,9 @@ function EmployerApplicationsPanel() {
                     </p>
 
                     {application.cvFileUrl ? (
-                      <a
-                        href={application.cvFileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-5 py-2 text-sm font-extrabold text-zinc-950 hover:bg-yellow-300"
-                      >
-                        <Download size={16} />
-                        Open CV
-                      </a>
+                     <ProtectedFileButton
+                     fileUrl={application.cvFileUrl}
+                     label="Open CV" />
                     ) : (
                       <p className="mt-2 text-sm font-bold text-zinc-300">
                         {application.cvFileName || "No CV attached"}

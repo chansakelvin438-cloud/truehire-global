@@ -10,6 +10,7 @@ import employerVerificationRoutes from "./routes/employerVerificationRoutes.js"
 import safetyReportRoutes from "./routes/safetyReportRoutes.js"
 import path from "path"
 import uploadRoutes from "./routes/uploadRoutes.js"
+import fileRoutes from "./routes/fileRoutes.js"
 
 dotenv.config()
 
@@ -27,7 +28,7 @@ app.use(
 
 app.use(express.json())
 app.use(morgan("dev"))
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")))
+app.use("/uploads/company-logos", express.static(path.join(process.cwd(), "uploads", "company-logos")))
 
 app.get("/", (req, res) => {
   res.json({
@@ -52,6 +53,7 @@ app.use("/api/notifications", notificationRoutes)
 app.use("/api/employer-verifications", employerVerificationRoutes)
 app.use("/api/safety-reports", safetyReportRoutes)
 app.use("/api/uploads", uploadRoutes)
+app.use("/api/files", fileRoutes)
 
 app.use((req, res) => {
   res.status(404).json({

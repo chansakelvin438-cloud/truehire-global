@@ -266,3 +266,106 @@ export async function uploadAuthorizationLetter(file) {
 
   return data
 }
+
+export async function openProtectedFile(fileUrl) {
+  const token = localStorage.getItem("authToken")
+
+  if (!token) {
+    throw new Error("Please sign in to open this file.")
+  }
+
+  if (!fileUrl) {
+    throw new Error("File link is missing.")
+  }
+
+  const apiServerUrl = API_BASE_URL.replace(/\/api\/?$/, "")
+
+  let secureFileUrl = fileUrl
+
+  // Convert older public CV links to the new protected route
+  if (secureFileUrl.includes("/uploads/cvs/")) {
+    secureFileUrl = secureFileUrl.replace("/uploads/cvs/", "/api/files/cvs/")
+  }
+
+  // Convert older public verification document links to the new protected routes
+  if (
+    secureFileUrl.includes(
+      "/uploads/verification-documents/business-registration/"
+    )
+  ) {
+    secureFileUrl = secureFileUrl.replace(
+      "/uploads/verification-documents/business-registration/",
+      "/api/files/verification/business-registration/"
+    )
+  }
+
+  if (secureFileUrl.includes("/uploads/verification-documents/tax-documents/")) {
+    secureFileUrl = secureFileUrl.replace(
+      "/uploads/verification-documents/tax-documents/",
+      "/api/files/verification/tax-documents/"
+    )
+  }
+
+  if (
+    secureFileUrl.includes(
+      "/uploads/verification-documents/authorization-letters/"
+    )
+  ) {
+    secureFileUrl = secureFileUrl.replace(
+      "/uploads/verification-documents/authorization-letters/",
+      "/api/files/verification/authorization-letters/"
+    )
+  }
+
+  if (secureFileUrl.startsWith("/api/")) {
+    secureFileUrl = `${apiServerUrl}${secureFileUrl}`
+  }
+
+  const newWindow = window.open("", "_blank")
+
+  if (newWindow) {
+    newWindow.document.write(`
+      <html>
+        <head>
+          <title>Opening file...</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; padding: 24px;">
+          <p>Opening secure file...</p>
+        </body>
+      </html>
+    `)
+  }
+
+  try {
+    const response = await fetch(secureFileUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => null)
+      throw new Error(data?.message || "You are not allowed to open this file.")
+    }
+
+    const fileBlob = await response.blob()
+    const fileObjectUrl = URL.createObjectURL(fileBlob)
+
+    if (newWindow) {
+      newWindow.location.href = fileObjectUrl
+    } else {
+      window.open(fileObjectUrl, "_blank")
+    }
+
+    setTimeout(() => {
+      URL.revokeObjectURL(fileObjectUrl)
+    }, 60 * 1000)
+  } catch (error) {
+    if (newWindow) {
+      newWindow.close()
+    }
+
+    throw error
+  }
+}

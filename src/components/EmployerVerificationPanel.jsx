@@ -17,6 +17,7 @@ import {
   getAdminEmployerVerifications,
   updateEmployerVerificationStatus,
 } from "../services/api"
+import ProtectedFileButton from "./ProtectedFileButton"
 
 function EmployerVerificationPanel() {
   const [verifications, setVerifications] = useState([])
@@ -331,15 +332,11 @@ function DocumentCard({ label, fileName, fileUrl }) {
       </p>
 
       {fileUrl ? (
-        <a
-          href={fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-xs font-extrabold text-zinc-950 hover:bg-yellow-300"
-        >
-          <Download size={15} />
-          Open Document
-        </a>
+        <ProtectedFileButton
+            fileUrl={fileUrl}
+            label="Open Document"
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-xs font-extrabold text-zinc-950 hover:bg-yellow-300"
+        />
       ) : (
         <p className="mt-2 break-words text-sm font-bold text-white">
           {fileName || "No document attached"}
