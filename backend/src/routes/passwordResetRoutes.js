@@ -2,6 +2,7 @@ import express from "express"
 import bcrypt from "bcryptjs"
 import { randomInt } from "crypto"
 import prisma from "../config/prisma.js"
+import { sendPasswordResetOtp } from "../services/emailService.js"
 import {
   cleanEmail,
   cleanPhone,
@@ -135,16 +136,24 @@ router.post("/request", async (req, res) => {
       },
     })
 
-    console.log("")
-    console.log("====================================")
-    console.log("TrueHire Password Reset OTP")
-    console.log(`User: ${user.email}`)
-    console.log(`Channel: ${channel}`)
-    console.log(`Send to: ${deliveryTarget}`)
-    console.log(`OTP: ${otp}`)
-    console.log("Expires in: 10 minutes")
-    console.log("====================================")
-    console.log("")
+    if (channel === "EMAIL") {
+  await sendPasswordResetOtp({
+    to: user.email,
+    name: user.name,
+    otp,
+  })
+} else {
+  console.log("")
+  console.log("====================================")
+  console.log("TrueHire Password Reset OTP")
+  console.log(`User: ${user.email}`)
+  console.log(`Channel: ${channel}`)
+  console.log(`Send to: ${deliveryTarget}`)
+  console.log(`OTP: ${otp}`)
+  console.log("Expires in: 10 minutes")
+  console.log("====================================")
+  console.log("")
+}
 
     res.json({
       status: "success",
