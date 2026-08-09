@@ -272,6 +272,14 @@ async function handleSignIn(event) {
                     />
                   </div>
                 </div>
+                <div className="mt-3 text-right">
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm font-bold text-teal-300 hover:text-teal-200"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
 
                 <button
                     type="submit"

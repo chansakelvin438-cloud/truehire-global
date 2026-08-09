@@ -369,3 +369,17 @@ export async function openProtectedFile(fileUrl) {
     throw error
   }
 }
+
+export function requestPasswordReset(identifier) {
+  return apiRequest("/password-reset/request", {
+    method: "POST",
+    body: JSON.stringify({ identifier }),
+  })
+}
+
+export function confirmPasswordReset(resetData) {
+  return apiRequest("/password-reset/confirm", {
+    method: "POST",
+    body: JSON.stringify(resetData),
+  })
+}

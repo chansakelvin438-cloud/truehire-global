@@ -11,6 +11,7 @@ import safetyReportRoutes from "./routes/safetyReportRoutes.js"
 import path from "path"
 import uploadRoutes from "./routes/uploadRoutes.js"
 import fileRoutes from "./routes/fileRoutes.js"
+import passwordResetRoutes from "./routes/passwordResetRoutes.js"
 
 dotenv.config()
 
@@ -47,6 +48,7 @@ app.get("/api/health", (req, res) => {
 })
 
 app.use("/api/auth", authRoutes)
+app.use("/api/password-reset", passwordResetRoutes)
 app.use("/api/jobs", jobRoutes)
 app.use("/applicationRoutes", applicationRoutes)
 app.use("/api/notifications", notificationRoutes)

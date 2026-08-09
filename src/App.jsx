@@ -20,6 +20,8 @@ import JobSeekerProfile from "./pages/JobSeekerProfile"
 import JobAlerts from "./pages/JobAlerts"
 import Privacy from "./pages/Privacy"
 import Terms from "./pages/Terms"
+import ForgotPassword from "./pages/ForgotPassword"
+import ResetPassword from "./pages/ResetPassword"
 
 function App() {
   return (
@@ -72,6 +74,8 @@ function App() {
 
         <Route path="/signin" element={<SignIn />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route
           path="/dashboard"
