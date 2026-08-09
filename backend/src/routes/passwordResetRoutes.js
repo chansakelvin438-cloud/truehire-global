@@ -2,19 +2,26 @@ import express from "express"
 import bcrypt from "bcryptjs"
 import { randomInt } from "crypto"
 import prisma from "../config/prisma.js"
+import {
+  cleanEmail,
+  cleanPhone,
+  cleanText,
+  isValidPassword,
+  rejectDangerousInput,
+} from "../utils/validation.js"
 
 const router = express.Router()
 
 function normaliseIdentifier(identifier) {
   if (!identifier) return ""
 
-  const cleanIdentifier = identifier.trim()
+  const cleanIdentifier = cleanText(identifier, 254)
 
   if (cleanIdentifier.includes("@")) {
-    return cleanIdentifier.toLowerCase()
+    return cleanEmail(cleanIdentifier)
   }
 
-  return cleanIdentifier
+  return cleanPhone(cleanIdentifier)
 }
 
 function generateOtp() {
@@ -38,7 +45,7 @@ async function findUserByIdentifier(identifier) {
     where: {
       OR: [
         {
-          email: cleanIdentifier.toLowerCase(),
+          email: cleanIdentifier,
         },
         {
           phone: cleanIdentifier,
@@ -66,7 +73,18 @@ function getOtpChannel(user, identifier) {
 
 router.post("/request", async (req, res) => {
   try {
-    const { identifier } = req.body
+    const identifier = normaliseIdentifier(req.body.identifier)
+
+    const unsafeInputError = rejectDangerousInput({
+      Identifier: identifier,
+    })
+
+    if (unsafeInputError) {
+      return res.status(400).json({
+        status: "error",
+        message: unsafeInputError,
+      })
+    }
 
     if (!identifier) {
       return res.status(400).json({
@@ -148,7 +166,21 @@ router.post("/request", async (req, res) => {
 
 router.post("/confirm", async (req, res) => {
   try {
-    const { identifier, otp, newPassword } = req.body
+    const identifier = normaliseIdentifier(req.body.identifier)
+    const otp = cleanText(req.body.otp, 6)
+    const newPassword = req.body.newPassword
+
+    const unsafeInputError = rejectDangerousInput({
+      Identifier: identifier,
+      OTP: otp,
+    })
+
+    if (unsafeInputError) {
+      return res.status(400).json({
+        status: "error",
+        message: unsafeInputError,
+      })
+    }
 
     if (!identifier || !otp || !newPassword) {
       return res.status(400).json({
@@ -157,7 +189,14 @@ router.post("/confirm", async (req, res) => {
       })
     }
 
-    if (String(newPassword).length < 8) {
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({
+        status: "error",
+        message: "OTP must be a 6-digit number.",
+      })
+    }
+
+    if (!isValidPassword(newPassword)) {
       return res.status(400).json({
         status: "error",
         message: "Password must be at least 8 characters long.",

@@ -1,7 +1,13 @@
 import express from "express"
 import prisma from "../config/prisma.js"
 import { protect, allowRoles } from "../middleware/authMiddleware.js"
-import { analyseJobRisk } from "../utils/scamRisk.js"
+import {
+  cleanEmail,
+  cleanPhone,
+  cleanText,
+  isValidEmail,
+  rejectDangerousInput,
+} from "../utils/validation.js"
 
 const router = express.Router()
 
@@ -13,34 +19,38 @@ function formatJobStatus(status) {
   return "Pending Review"
 }
 
-function formatPaymentStatus(status) {
-  if (status === "PAYMENT_DISABLED") return "Payment Disabled"
-  return status || "Payment Disabled"
-}
+function normaliseJobStatus(status) {
+  const cleanStatus = cleanText(status, 50)
+    .toUpperCase()
+    .replace(/[\s-]/g, "_")
 
-function parseReasons(reasons) {
-  try {
-    return JSON.parse(reasons || "[]")
-  } catch {
-    return []
+  const statusMap = {
+    PENDING_REVIEW: "PENDING_REVIEW",
+    PENDING: "PENDING_REVIEW",
+    APPROVED: "APPROVED",
+    FLAGGED: "FLAGGED",
+    REJECTED: "REJECTED",
   }
+
+  return statusMap[cleanStatus] || null
 }
 
 function parseDeadline(deadline) {
   if (!deadline) return null
 
-  const parsedDate = new Date(`${deadline}T00:00:00`)
+  const deadlineDate = new Date(`${deadline}T00:00:00`)
 
-  if (Number.isNaN(parsedDate.getTime())) {
+  if (Number.isNaN(deadlineDate.getTime())) {
     return null
   }
 
-  return parsedDate
+  return deadlineDate
 }
 
 function getTodayDateOnly() {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const today = new Date()
+
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate())
 }
 
 function getDeadlineInfo(deadline) {
@@ -51,18 +61,158 @@ function getDeadlineInfo(deadline) {
       isDeadlineValid: false,
       isDeadlineReached: true,
       canApply: false,
-      deadlineStatus: "Invalid date",
+      deadlineStatus: "Invalid deadline",
     }
   }
 
-  const today = getTodayDateOnly()
-  const isDeadlineReached = deadlineDate <= today
+  const todayOnly = getTodayDateOnly()
+  const isDeadlineReached = deadlineDate <= todayOnly
 
   return {
     isDeadlineValid: true,
     isDeadlineReached,
     canApply: !isDeadlineReached,
-    deadlineStatus: isDeadlineReached ? "Deadline reached" : "Open",
+    deadlineStatus: isDeadlineReached ? "Applications closed" : "Open",
+  }
+}
+
+function parseScamRiskReasons(value) {
+  if (!value) return []
+
+  try {
+    const parsed = JSON.parse(value)
+
+    if (Array.isArray(parsed)) {
+      return parsed
+    }
+
+    return []
+  } catch {
+    return String(value)
+      .split("|")
+      .map((reason) => reason.trim())
+      .filter(Boolean)
+  }
+}
+
+function isAllowedLogoUrl(companyLogo) {
+  if (!companyLogo) return true
+
+  const logo = String(companyLogo)
+
+  if (logo.startsWith("javascript:")) return false
+  if (logo.startsWith("data:")) return false
+
+  return (
+    logo.includes("/uploads/company-logos/") ||
+    logo.startsWith("http://") ||
+    logo.startsWith("https://")
+  )
+}
+
+function analyseJobRisk(jobData) {
+  const text = [
+    jobData.title,
+    jobData.company,
+    jobData.location,
+    jobData.salary,
+    jobData.description,
+    jobData.requirements,
+  ]
+    .join(" ")
+    .toLowerCase()
+
+  let score = 0
+  const reasons = []
+
+  const paymentPatterns = [
+    "application fee",
+    "registration fee",
+    "interview fee",
+    "medical fee",
+    "training fee",
+    "processing fee",
+    "transport fee",
+    "pay before",
+    "pay first",
+    "send money",
+    "mobile money",
+    "airtel money",
+    "mtn momo",
+    "deposit",
+  ]
+
+  const urgencyPatterns = [
+    "urgent hiring",
+    "apply immediately",
+    "limited slots",
+    "first come first served",
+    "start tomorrow",
+  ]
+
+  const suspiciousContactPatterns = [
+    "whatsapp only",
+    "telegram",
+    "dm me",
+    "inbox me",
+    "call only",
+  ]
+
+  for (const pattern of paymentPatterns) {
+    if (text.includes(pattern)) {
+      score += 35
+      reasons.push(`Mentions possible payment request: ${pattern}`)
+    }
+  }
+
+  for (const pattern of urgencyPatterns) {
+    if (text.includes(pattern)) {
+      score += 10
+      reasons.push(`Uses urgency wording: ${pattern}`)
+    }
+  }
+
+  for (const pattern of suspiciousContactPatterns) {
+    if (text.includes(pattern)) {
+      score += 15
+      reasons.push(`Uses suspicious contact wording: ${pattern}`)
+    }
+  }
+
+  if (!jobData.email || !isValidEmail(jobData.email)) {
+    score += 20
+    reasons.push("Employer email is missing or invalid")
+  }
+
+  if (!jobData.company || jobData.company.length < 2) {
+    score += 15
+    reasons.push("Company name appears incomplete")
+  }
+
+  if (!jobData.description || jobData.description.length < 50) {
+    score += 15
+    reasons.push("Job description is too short")
+  }
+
+  if (!jobData.requirements || jobData.requirements.length < 20) {
+    score += 10
+    reasons.push("Job requirements are too short")
+  }
+
+  const finalScore = Math.min(score, 100)
+
+  let level = "Low Risk"
+
+  if (finalScore >= 70) {
+    level = "High Risk"
+  } else if (finalScore >= 35) {
+    level = "Medium Risk"
+  }
+
+  return {
+    level,
+    score: finalScore,
+    reasons,
   }
 }
 
@@ -71,6 +221,7 @@ function formatJob(job) {
 
   return {
     id: job.id,
+    employerId: job.employerId,
     title: job.title,
     company: job.company,
     companyLogo: job.companyLogo,
@@ -84,16 +235,39 @@ function formatJob(job) {
     experience: job.experience,
     description: job.description,
     requirements: job.requirements,
-    status: formatJobStatus(job.status),
-    paymentStatus: formatPaymentStatus(job.paymentStatus),
-    scamRiskLevel: job.scamRiskLevel,
-    scamRiskScore: job.scamRiskScore,
-    scamRiskReasons: parseReasons(job.scamRiskReasons),
+
+    status: job.status,
+    statusLabel: formatJobStatus(job.status),
+
+    paymentStatus: job.paymentStatus,
+    scamRiskLevel: job.scamRiskLevel || "Low Risk",
+    scamRiskScore: job.scamRiskScore || 0,
+    scamRiskReasons: parseScamRiskReasons(job.scamRiskReasons),
     adminNote: job.adminNote,
-    submittedAt: new Intl.DateTimeFormat("en-GB").format(job.createdAt),
+
+    isDeadlineValid: deadlineInfo.isDeadlineValid,
+    isDeadlineReached: deadlineInfo.isDeadlineReached,
+    canApply: deadlineInfo.canApply,
+    deadlineStatus: deadlineInfo.deadlineStatus,
+
+    postedAt: new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(job.createdAt),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
-    ...deadlineInfo,
+
+    employer: job.employer
+      ? {
+          id: job.employer.id,
+          companyName: job.employer.companyName,
+          phone: job.employer.phone,
+          website: job.employer.website,
+          address: job.employer.address,
+          verificationStatus: job.employer.verificationStatus,
+        }
+      : null,
   }
 }
 
@@ -106,6 +280,9 @@ router.get("/public", async (req, res) => {
       orderBy: {
         createdAt: "desc",
       },
+      include: {
+        employer: true,
+      },
     })
 
     res.json({
@@ -117,26 +294,29 @@ router.get("/public", async (req, res) => {
 
     res.status(500).json({
       status: "error",
-      message: "Failed to fetch public jobs",
+      message: "Failed to fetch jobs.",
     })
   }
 })
 
-router.get("/public/:id", async (req, res) => {
+router.get("/public/:jobId", async (req, res) => {
   try {
-    const { id } = req.params
+    const { jobId } = req.params
 
     const job = await prisma.job.findFirst({
       where: {
-        id,
+        id: jobId,
         status: "APPROVED",
+      },
+      include: {
+        employer: true,
       },
     })
 
     if (!job) {
       return res.status(404).json({
         status: "error",
-        message: "Job not found or not approved yet",
+        message: "Job not found or not available.",
       })
     }
 
@@ -149,42 +329,70 @@ router.get("/public/:id", async (req, res) => {
 
     res.status(500).json({
       status: "error",
-      message: "Failed to fetch job details",
+      message: "Failed to fetch job.",
     })
   }
 })
 
 router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
   try {
+    const unsafeInputError = rejectDangerousInput({
+      "Job title": req.body.title,
+      Company: req.body.company,
+      "Company logo": req.body.companyLogo,
+      Email: req.body.email,
+      Phone: req.body.phone,
+      Location: req.body.location,
+      Type: req.body.type,
+      Category: req.body.category,
+      Salary: req.body.salary,
+      Deadline: req.body.deadline,
+      Experience: req.body.experience,
+      Description: req.body.description,
+      Requirements: req.body.requirements,
+    })
+
+    if (unsafeInputError) {
+      return res.status(400).json({
+        status: "error",
+        message: unsafeInputError,
+      })
+    }
+
     const employerProfile = await prisma.employerProfile.findUnique({
-      where: { userId: req.user.id },
+      where: {
+        userId: req.user.id,
+      },
     })
 
     if (!employerProfile) {
       return res.status(400).json({
         status: "error",
-        message: "Employer profile not found. Please register as an employer.",
+        message: "Employer profile not found.",
       })
     }
 
-    const {
-      title,
-      company,
-      companyLogo,
-      email,
-      phone,
-      location,
-      type,
-      category,
-      salary,
-      deadline,
-      experience,
-      description,
-      requirements,
-    } = req.body
+    const title = cleanText(req.body.title, 160)
+    const company = cleanText(
+      req.body.company || employerProfile.companyName,
+      160
+    )
+    const companyLogo = cleanText(req.body.companyLogo, 1000)
+    const email = cleanEmail(req.body.email)
+    const phone = cleanPhone(req.body.phone)
+    const location = cleanText(req.body.location, 160)
+    const type = cleanText(req.body.type, 80)
+    const category = cleanText(req.body.category, 120)
+    const salary = cleanText(req.body.salary, 120)
+    const deadline = cleanText(req.body.deadline, 20)
+    const experience = cleanText(req.body.experience, 120)
+    const description = cleanText(req.body.description, 5000)
+    const requirements = cleanText(req.body.requirements, 5000)
 
     if (
       !title ||
+      !company ||
+      !email ||
       !location ||
       !type ||
       !category ||
@@ -198,55 +406,88 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
       })
     }
 
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Please enter a valid employer email address.",
+      })
+    }
+
+    if (!isAllowedLogoUrl(companyLogo)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid company logo link.",
+      })
+    }
+
     const deadlineInfo = getDeadlineInfo(deadline)
 
-    if (!deadlineInfo.isDeadlineValid) {
+    if (!deadlineInfo.isDeadlineValid || deadlineInfo.isDeadlineReached) {
       return res.status(400).json({
         status: "error",
-        message: "Please choose a valid application deadline.",
+        message: "Please choose a future application deadline.",
       })
     }
 
-    if (deadlineInfo.isDeadlineReached) {
+    if (description.length < 50) {
       return res.status(400).json({
         status: "error",
-        message: "Deadline must be a future date.",
+        message: "Job description must be at least 50 characters long.",
       })
     }
 
-    const jobData = {
+    if (requirements.length < 20) {
+      return res.status(400).json({
+        status: "error",
+        message: "Job requirements must be at least 20 characters long.",
+      })
+    }
+
+    const risk = analyseJobRisk({
       title,
-      company: company || employerProfile.companyName,
-      companyLogo: companyLogo || "",
-      email: email || req.user.email,
-      phone: phone || req.user.phone || employerProfile.phone,
+      company,
+      email,
+      phone,
       location,
       type,
       category,
-      salary: salary || "Negotiable",
+      salary,
       deadline,
-      experience: experience || "Not specified",
+      experience,
       description,
       requirements,
-    }
-
-    const risk = analyseJobRisk(jobData)
+    })
 
     const job = await prisma.job.create({
       data: {
         employerId: employerProfile.id,
-        ...jobData,
+        title,
+        company,
+        companyLogo: companyLogo || "",
+        email,
+        phone: phone || "",
+        location,
+        type,
+        category,
+        salary: salary || "",
+        deadline,
+        experience: experience || "",
+        description,
+        requirements,
         status: "PENDING_REVIEW",
         paymentStatus: "PAYMENT_DISABLED",
         scamRiskLevel: risk.level,
         scamRiskScore: risk.score,
         scamRiskReasons: JSON.stringify(risk.reasons),
       },
+      include: {
+        employer: true,
+      },
     })
 
     res.status(201).json({
       status: "success",
-      message: "Job submitted for admin review",
+      message: "Job submitted for review successfully.",
       job: formatJob(job),
     })
   } catch (error) {
@@ -254,21 +495,65 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
 
     res.status(500).json({
       status: "error",
-      message: "Failed to submit job advert",
+      message: "Failed to submit job advert.",
     })
   }
 })
 
+router.get(
+  "/employer/my-jobs",
+  protect,
+  allowRoles("EMPLOYER"),
+  async (req, res) => {
+    try {
+      const employerProfile = await prisma.employerProfile.findUnique({
+        where: {
+          userId: req.user.id,
+        },
+      })
+
+      if (!employerProfile) {
+        return res.status(400).json({
+          status: "error",
+          message: "Employer profile not found.",
+        })
+      }
+
+      const jobs = await prisma.job.findMany({
+        where: {
+          employerId: employerProfile.id,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          employer: true,
+        },
+      })
+
+      res.json({
+        status: "success",
+        jobs: jobs.map(formatJob),
+      })
+    } catch (error) {
+      console.error(error)
+
+      res.status(500).json({
+        status: "error",
+        message: "Failed to fetch employer jobs.",
+      })
+    }
+  }
+)
+
 router.get("/admin/all-jobs", protect, allowRoles("ADMIN"), async (req, res) => {
   try {
     const jobs = await prisma.job.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: {
+        createdAt: "desc",
+      },
       include: {
-        employer: {
-          include: {
-            user: true,
-          },
-        },
+        employer: true,
       },
     })
 
@@ -281,75 +566,83 @@ router.get("/admin/all-jobs", protect, allowRoles("ADMIN"), async (req, res) => 
 
     res.status(500).json({
       status: "error",
-      message: "Failed to fetch admin job queue",
+      message: "Failed to fetch admin jobs.",
     })
   }
 })
 
-router.patch("/:id/status", protect, allowRoles("ADMIN"), async (req, res) => {
+router.patch("/:jobId/status", protect, allowRoles("ADMIN"), async (req, res) => {
   try {
-    const { id } = req.params
-    const { status } = req.body
+    const { jobId } = req.params
+    const requestedStatus = normaliseJobStatus(req.body.status)
+    const adminNote = cleanText(req.body.adminNote, 1000)
 
-    const statusMap = {
-      Approved: "APPROVED",
-      Flagged: "FLAGGED",
-      Rejected: "REJECTED",
-      "Pending Review": "PENDING_REVIEW",
-    }
-
-    const newStatus = statusMap[status]
-
-    if (!newStatus) {
+    if (!requestedStatus) {
       return res.status(400).json({
         status: "error",
-        message: "Invalid job status",
+        message: "Invalid job status.",
       })
     }
 
     const existingJob = await prisma.job.findUnique({
-      where: { id },
+      where: {
+        id: jobId,
+      },
+      include: {
+        employer: true,
+      },
     })
 
     if (!existingJob) {
       return res.status(404).json({
         status: "error",
-        message: "Job not found",
+        message: "Job not found.",
       })
     }
 
-    const risk = analyseJobRisk(existingJob)
     const deadlineInfo = getDeadlineInfo(existingJob.deadline)
 
-    let finalStatus = newStatus
-    let adminNote = existingJob.adminNote || ""
-
-    if (newStatus === "APPROVED" && risk.level === "High Risk") {
-      finalStatus = "FLAGGED"
-      adminNote =
-        "This job was automatically flagged because it contains high-risk scam indicators. Admin cannot approve jobs that ask applicants to pay money."
+    if (
+      requestedStatus === "APPROVED" &&
+      (!deadlineInfo.isDeadlineValid || deadlineInfo.isDeadlineReached)
+    ) {
+      return res.status(400).json({
+        status: "error",
+        message: "This job cannot be approved because the deadline is invalid or reached.",
+      })
     }
 
-    if (newStatus === "APPROVED" && !deadlineInfo.canApply) {
-      finalStatus = "REJECTED"
-      adminNote =
-        "This job cannot be approved because the application deadline is invalid or has already been reached."
+    let finalStatus = requestedStatus
+    let finalAdminNote = adminNote || existingJob.adminNote || ""
+
+    if (
+      requestedStatus === "APPROVED" &&
+      existingJob.scamRiskLevel === "High Risk"
+    ) {
+      finalStatus = "FLAGGED"
+      finalAdminNote =
+        "This job was automatically flagged because it contains high-risk wording."
     }
 
     const updatedJob = await prisma.job.update({
-      where: { id },
+      where: {
+        id: jobId,
+      },
       data: {
         status: finalStatus,
-        scamRiskLevel: risk.level,
-        scamRiskScore: risk.score,
-        scamRiskReasons: JSON.stringify(risk.reasons),
-        adminNote: finalStatus === "APPROVED" ? "" : adminNote,
+        adminNote: finalAdminNote,
+      },
+      include: {
+        employer: true,
       },
     })
 
     res.json({
       status: "success",
-      message: "Job status updated successfully",
+      message:
+        finalStatus === "FLAGGED" && requestedStatus === "APPROVED"
+          ? "Job was flagged due to high-risk content."
+          : "Job status updated successfully.",
       job: formatJob(updatedJob),
     })
   } catch (error) {
@@ -357,39 +650,7 @@ router.patch("/:id/status", protect, allowRoles("ADMIN"), async (req, res) => {
 
     res.status(500).json({
       status: "error",
-      message: "Failed to update job status",
-    })
-  }
-})
-
-router.get("/employer/my-jobs", protect, allowRoles("EMPLOYER"), async (req, res) => {
-  try {
-    const employerProfile = await prisma.employerProfile.findUnique({
-      where: { userId: req.user.id },
-    })
-
-    if (!employerProfile) {
-      return res.status(400).json({
-        status: "error",
-        message: "Employer profile not found.",
-      })
-    }
-
-    const jobs = await prisma.job.findMany({
-      where: { employerId: employerProfile.id },
-      orderBy: { createdAt: "desc" },
-    })
-
-    res.json({
-      status: "success",
-      jobs: jobs.map(formatJob),
-    })
-  } catch (error) {
-    console.error(error)
-
-    res.status(500).json({
-      status: "error",
-      message: "Failed to fetch employer jobs",
+      message: "Failed to update job status.",
     })
   }
 })

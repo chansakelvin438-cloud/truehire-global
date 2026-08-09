@@ -1,26 +1,54 @@
-import { protect } from "../middleware/authMiddleware.js"
 import express from "express"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import prisma from "../config/prisma.js"
-
+import { protect } from "../middleware/authMiddleware.js"
+import {
+  cleanEmail,
+  cleanPhone,
+  cleanText,
+  isValidEmail,
+  isValidPassword,
+  rejectDangerousInput,
+} from "../utils/validation.js"
 
 const router = express.Router()
 
 function normaliseRole(role) {
-  if (role === "jobseeker" || role === "JOB_SEEKER") return "JOB_SEEKER"
-  if (role === "employer" || role === "EMPLOYER") return "EMPLOYER"
-  if (role === "admin" || role === "ADMIN") return "ADMIN"
+  const cleanRole = String(role || "")
+    .toLowerCase()
+    .replace(/[_\-\s]/g, "")
+
+  if (cleanRole === "jobseeker") return "JOB_SEEKER"
+  if (cleanRole === "employer") return "EMPLOYER"
+  if (cleanRole === "admin") return "ADMIN"
 
   return null
 }
 
-function createToken(user) {
+function formatRole(role) {
+  if (role === "JOB_SEEKER") return "jobseeker"
+  if (role === "EMPLOYER") return "employer"
+  if (role === "ADMIN") return "admin"
+
+  return "jobseeker"
+}
+
+function formatVerificationStatus(status) {
+  if (status === "VERIFICATION_PENDING") return "Verification Pending"
+  if (status === "SUBMITTED_FOR_REVIEW") return "Submitted for Review"
+  if (status === "VERIFIED") return "Verified"
+  if (status === "FLAGGED") return "Flagged"
+  if (status === "REJECTED") return "Rejected"
+
+  return "Verification Pending"
+}
+
+function generateToken(user) {
   return jwt.sign(
     {
       id: user.id,
       role: user.role,
-      email: user.email,
     },
     process.env.JWT_SECRET,
     {
@@ -29,141 +57,220 @@ function createToken(user) {
   )
 }
 
+function formatUser(user) {
+  return {
+    id: user.id,
+    role: formatRole(user.role),
+    roleCode: user.role,
+    name: user.name,
+    displayName: user.name,
+    email: user.email,
+    phone: user.phone,
+    companyName: user.employerProfile?.companyName || "",
+    verificationStatus: user.employerProfile
+      ? formatVerificationStatus(user.employerProfile.verificationStatus)
+      : "",
+    jobSeekerProfile: user.jobSeekerProfile || null,
+    employerProfile: user.employerProfile
+      ? {
+          ...user.employerProfile,
+          verificationStatus: formatVerificationStatus(
+            user.employerProfile.verificationStatus
+          ),
+        }
+      : null,
+  }
+}
+
 router.post("/register", async (req, res) => {
   try {
-    const {
-      role,
-      name,
-      firstName,
-      lastName,
-      companyName,
-      email,
-      phone,
-      password,
-    } = req.body
+    const role = normaliseRole(req.body.role || req.body.accountType)
 
-    const userRole = normaliseRole(role)
-
-    if (!userRole) {
+    if (!role) {
       return res.status(400).json({
         status: "error",
-        message: "Invalid account type",
+        message: "Please select a valid account type.",
       })
     }
 
-    if (userRole === "ADMIN") {
+    if (role === "ADMIN") {
       return res.status(403).json({
         status: "error",
-        message: "Admin accounts cannot be created publicly",
+        message: "Admin registration is not allowed publicly.",
       })
     }
 
-    if (!email || !password) {
+    const name = cleanText(
+      req.body.name || req.body.fullName || req.body.companyName,
+      120
+    )
+    const email = cleanEmail(req.body.email)
+    const phone = cleanPhone(req.body.phone)
+    const companyName = cleanText(req.body.companyName || name, 160)
+    const password = req.body.password
+
+    const unsafeInputError = rejectDangerousInput({
+      Name: name,
+      Email: email,
+      Phone: phone,
+      "Company name": companyName,
+    })
+
+    if (unsafeInputError) {
       return res.status(400).json({
         status: "error",
-        message: "Email and password are required",
+        message: unsafeInputError,
+      })
+    }
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        status: "error",
+        message: "Name, email, and password are required.",
+      })
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Please enter a valid email address.",
+      })
+    }
+
+    if (!isValidPassword(password)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Password must be at least 8 characters long.",
       })
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: {
+        email,
+      },
     })
 
     if (existingUser) {
       return res.status(409).json({
         status: "error",
-        message: "An account with this email already exists",
+        message: "An account with this email already exists.",
       })
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    const displayName =
-      userRole === "EMPLOYER"
-        ? companyName || name || "Employer Account"
-        : name || `${firstName || ""} ${lastName || ""}`.trim() || "Job Seeker"
-
     const user = await prisma.user.create({
       data: {
-        role: userRole,
-        name: displayName,
-        email: email.toLowerCase(),
-        phone,
+        role,
+        name,
+        email,
+        phone: phone || null,
         password: hashedPassword,
-        employerProfile:
-          userRole === "EMPLOYER"
-            ? {
+
+        ...(role === "JOB_SEEKER"
+          ? {
+              jobSeekerProfile: {
                 create: {
-                  companyName: companyName || displayName,
-                  phone,
+                  fullName: name,
+                  phone: phone || null,
                 },
-              }
-            : undefined,
-        jobSeekerProfile:
-          userRole === "JOB_SEEKER"
-            ? {
+              },
+            }
+          : {}),
+
+        ...(role === "EMPLOYER"
+          ? {
+              employerProfile: {
                 create: {
-                  fullName: displayName,
-                  phone,
+                  companyName: companyName || name,
+                  phone: phone || null,
                 },
-              }
-            : undefined,
+              },
+            }
+          : {}),
       },
       include: {
-        employerProfile: true,
         jobSeekerProfile: true,
+        employerProfile: true,
       },
     })
 
-    const token = createToken(user)
+    const token = generateToken(user)
 
     res.status(201).json({
       status: "success",
-      message: "Account created successfully",
+      message: "Account created successfully.",
       token,
-      user: {
-        id: user.id,
-        role: user.role,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        employerProfile: user.employerProfile,
-        jobSeekerProfile: user.jobSeekerProfile,
-      },
+      user: formatUser(user),
     })
   } catch (error) {
     console.error(error)
 
     res.status(500).json({
       status: "error",
-      message: "Registration failed",
+      message: "Failed to create account.",
     })
   }
 })
 
 router.post("/login", async (req, res) => {
   try {
-    const { email, password, role } = req.body
+    const identifier = cleanText(req.body.email || req.body.identifier, 254)
+    const password = req.body.password
+    const requestedRole = normaliseRole(
+      req.body.role || req.body.accountType || req.body.requiredRole
+    )
 
-    if (!email || !password) {
+    const unsafeInputError = rejectDangerousInput({
+      Identifier: identifier,
+    })
+
+    if (unsafeInputError) {
       return res.status(400).json({
         status: "error",
-        message: "Email and password are required",
+        message: unsafeInputError,
       })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    if (!identifier || !password) {
+      return res.status(400).json({
+        status: "error",
+        message: "Email/phone and password are required.",
+      })
+    }
+
+    const cleanIdentifier = identifier.includes("@")
+      ? cleanEmail(identifier)
+      : cleanPhone(identifier)
+
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          {
+            email: cleanIdentifier,
+          },
+          {
+            phone: cleanIdentifier,
+          },
+        ],
+      },
       include: {
-        employerProfile: true,
         jobSeekerProfile: true,
+        employerProfile: true,
       },
     })
 
     if (!user) {
       return res.status(401).json({
         status: "error",
-        message: "Invalid email or password",
+        message: "Invalid email/phone or password.",
+      })
+    }
+
+    if (requestedRole && user.role !== requestedRole) {
+      return res.status(403).json({
+        status: "error",
+        message: "This account type does not match the selected sign-in option.",
       })
     }
 
@@ -172,58 +279,59 @@ router.post("/login", async (req, res) => {
     if (!passwordMatches) {
       return res.status(401).json({
         status: "error",
-        message: "Invalid email or password",
+        message: "Invalid email/phone or password.",
       })
     }
 
-    const requestedRole = normaliseRole(role)
-
-    if (requestedRole && user.role !== requestedRole) {
-      return res.status(403).json({
-        status: "error",
-        message: "This account does not match the selected account type",
-      })
-    }
-
-    const token = createToken(user)
+    const token = generateToken(user)
 
     res.json({
       status: "success",
-      message: "Login successful",
+      message: "Signed in successfully.",
       token,
-      user: {
-        id: user.id,
-        role: user.role,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        employerProfile: user.employerProfile,
-        jobSeekerProfile: user.jobSeekerProfile,
-      },
+      user: formatUser(user),
     })
   } catch (error) {
     console.error(error)
 
     res.status(500).json({
       status: "error",
-      message: "Login failed",
+      message: "Failed to sign in.",
     })
   }
 })
 
 router.get("/me", protect, async (req, res) => {
-  res.json({
-    status: "success",
-    user: {
-      id: req.user.id,
-      role: req.user.role,
-      name: req.user.name,
-      email: req.user.email,
-      phone: req.user.phone,
-      employerProfile: req.user.employerProfile,
-      jobSeekerProfile: req.user.jobSeekerProfile,
-    },
-  })
+  try {
+    const user = await prisma.user.findUnique({
+      where: {
+        id: req.user.id,
+      },
+      include: {
+        jobSeekerProfile: true,
+        employerProfile: true,
+      },
+    })
+
+    if (!user) {
+      return res.status(404).json({
+        status: "error",
+        message: "User not found.",
+      })
+    }
+
+    res.json({
+      status: "success",
+      user: formatUser(user),
+    })
+  } catch (error) {
+    console.error(error)
+
+    res.status(500).json({
+      status: "error",
+      message: "Failed to fetch user.",
+    })
+  }
 })
 
 export default router

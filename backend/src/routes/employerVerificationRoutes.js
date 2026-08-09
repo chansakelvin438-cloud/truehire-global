@@ -1,6 +1,13 @@
 import express from "express"
 import prisma from "../config/prisma.js"
 import { protect, allowRoles } from "../middleware/authMiddleware.js"
+import {
+  cleanEmail,
+  cleanPhone,
+  cleanText,
+  isValidEmail,
+  rejectDangerousInput,
+} from "../utils/validation.js"
 
 const router = express.Router()
 
@@ -14,15 +21,58 @@ function formatVerificationStatus(status) {
 }
 
 function normaliseVerificationStatus(status) {
+  const cleanStatus = cleanText(status, 50)
+    .toUpperCase()
+    .replace(/[\s-]/g, "_")
+
   const statusMap = {
-    "Verification Pending": "VERIFICATION_PENDING",
-    "Submitted for Review": "SUBMITTED_FOR_REVIEW",
-    Verified: "VERIFIED",
-    Flagged: "FLAGGED",
-    Rejected: "REJECTED",
+    VERIFICATION_PENDING: "VERIFICATION_PENDING",
+    SUBMITTED_FOR_REVIEW: "SUBMITTED_FOR_REVIEW",
+    SUBMITTED: "SUBMITTED_FOR_REVIEW",
+    VERIFIED: "VERIFIED",
+    FLAGGED: "FLAGGED",
+    REJECTED: "REJECTED",
   }
 
-  return statusMap[status] || null
+  return statusMap[cleanStatus] || null
+}
+
+function isValidWebsiteUrl(website) {
+  if (!website) return true
+
+  try {
+    const url = new URL(website)
+
+    return url.protocol === "http:" || url.protocol === "https:"
+  } catch {
+    return false
+  }
+}
+
+function isAllowedVerificationDocumentUrl(fileUrl, documentType) {
+  if (!fileUrl) return true
+
+  const url = String(fileUrl)
+
+  if (url.startsWith("javascript:")) return false
+  if (url.startsWith("data:")) return false
+
+  const allowedPaths = {
+    businessRegistration: [
+      "/api/files/verification/business-registration/",
+      "/uploads/verification-documents/business-registration/",
+    ],
+    taxDocument: [
+      "/api/files/verification/tax-documents/",
+      "/uploads/verification-documents/tax-documents/",
+    ],
+    authorizationLetter: [
+      "/api/files/verification/authorization-letters/",
+      "/uploads/verification-documents/authorization-letters/",
+    ],
+  }
+
+  return allowedPaths[documentType].some((path) => url.includes(path))
 }
 
 function formatVerificationRequest(request) {
@@ -78,6 +128,34 @@ function formatVerificationRequest(request) {
 
 router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
   try {
+    const unsafeInputError = rejectDangerousInput({
+      "Company name": req.body.companyName,
+      Email: req.body.email,
+      Phone: req.body.phone,
+      "Company registration number": req.body.companyRegistrationNumber,
+      TPIN: req.body.tpin,
+      "Business type": req.body.businessType,
+      Address: req.body.address,
+      "Contact person": req.body.contactPerson,
+      Website: req.body.website,
+
+      "Business registration file name": req.body.businessRegistrationFileName,
+      "Business registration file link": req.body.businessRegistrationFileUrl,
+
+      "Tax document file name": req.body.taxDocumentFileName,
+      "Tax document file link": req.body.taxDocumentFileUrl,
+
+      "Authorisation letter file name": req.body.authorizationLetterFileName,
+      "Authorisation letter file link": req.body.authorizationLetterFileUrl,
+    })
+
+    if (unsafeInputError) {
+      return res.status(400).json({
+        status: "error",
+        message: unsafeInputError,
+      })
+    }
+
     const employerProfile = await prisma.employerProfile.findUnique({
       where: {
         userId: req.user.id,
@@ -91,26 +169,39 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
       })
     }
 
-    const {
-      companyName,
-      email,
-      phone,
-      companyRegistrationNumber,
-      tpin,
-      businessType,
-      address,
-      contactPerson,
-      website,
+    const companyName = cleanText(req.body.companyName, 160)
+    const email = cleanEmail(req.body.email)
+    const phone = cleanPhone(req.body.phone)
+    const companyRegistrationNumber = cleanText(
+      req.body.companyRegistrationNumber,
+      120
+    )
+    const tpin = cleanText(req.body.tpin, 80)
+    const businessType = cleanText(req.body.businessType, 120)
+    const address = cleanText(req.body.address, 250)
+    const contactPerson = cleanText(req.body.contactPerson, 120)
+    const website = cleanText(req.body.website, 250)
 
-      businessRegistrationFileName,
-      businessRegistrationFileUrl,
+    const businessRegistrationFileName = cleanText(
+      req.body.businessRegistrationFileName,
+      260
+    )
+    const businessRegistrationFileUrl = cleanText(
+      req.body.businessRegistrationFileUrl,
+      1000
+    )
 
-      taxDocumentFileName,
-      taxDocumentFileUrl,
+    const taxDocumentFileName = cleanText(req.body.taxDocumentFileName, 260)
+    const taxDocumentFileUrl = cleanText(req.body.taxDocumentFileUrl, 1000)
 
-      authorizationLetterFileName,
-      authorizationLetterFileUrl,
-    } = req.body
+    const authorizationLetterFileName = cleanText(
+      req.body.authorizationLetterFileName,
+      260
+    )
+    const authorizationLetterFileUrl = cleanText(
+      req.body.authorizationLetterFileUrl,
+      1000
+    )
 
     if (
       !companyName ||
@@ -124,6 +215,72 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
       return res.status(400).json({
         status: "error",
         message: "Please fill in all required verification fields.",
+      })
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Please enter a valid company email address.",
+      })
+    }
+
+    if (!isValidWebsiteUrl(website)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Please enter a valid website link beginning with http:// or https://.",
+      })
+    }
+
+    if (
+      !isAllowedVerificationDocumentUrl(
+        businessRegistrationFileUrl,
+        "businessRegistration"
+      )
+    ) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid business registration document link.",
+      })
+    }
+
+    if (!isAllowedVerificationDocumentUrl(taxDocumentFileUrl, "taxDocument")) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid tax document link.",
+      })
+    }
+
+    if (
+      !isAllowedVerificationDocumentUrl(
+        authorizationLetterFileUrl,
+        "authorizationLetter"
+      )
+    ) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid authorisation letter link.",
+      })
+    }
+
+    if (companyName.length < 2) {
+      return res.status(400).json({
+        status: "error",
+        message: "Company name is too short.",
+      })
+    }
+
+    if (companyRegistrationNumber.length < 3) {
+      return res.status(400).json({
+        status: "error",
+        message: "Company registration number is too short.",
+      })
+    }
+
+    if (tpin.length < 3) {
+      return res.status(400).json({
+        status: "error",
+        message: "TPIN is too short.",
       })
     }
 
@@ -188,53 +345,58 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
   }
 })
 
-router.get("/my-verification", protect, allowRoles("EMPLOYER"), async (req, res) => {
-  try {
-    const employerProfile = await prisma.employerProfile.findUnique({
-      where: {
-        userId: req.user.id,
-      },
-    })
-
-    if (!employerProfile) {
-      return res.status(400).json({
-        status: "error",
-        message: "Employer profile not found.",
+router.get(
+  "/my-verification",
+  protect,
+  allowRoles("EMPLOYER"),
+  async (req, res) => {
+    try {
+      const employerProfile = await prisma.employerProfile.findUnique({
+        where: {
+          userId: req.user.id,
+        },
       })
-    }
 
-    const verification = await prisma.employerVerification.findFirst({
-      where: {
-        employerId: employerProfile.id,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        employer: {
-          include: {
-            user: true,
+      if (!employerProfile) {
+        return res.status(400).json({
+          status: "error",
+          message: "Employer profile not found.",
+        })
+      }
+
+      const verification = await prisma.employerVerification.findFirst({
+        where: {
+          employerId: employerProfile.id,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          employer: {
+            include: {
+              user: true,
+            },
           },
         },
-      },
-    })
+      })
 
-    res.json({
-      status: "success",
-      verificationStatus: formatVerificationStatus(
-        employerProfile.verificationStatus
-      ),
-      verification: verification ? formatVerificationRequest(verification) : null,
-    })
-  } catch (error) {
-    console.error(error)
+      res.json({
+        status: "success",
+        verificationStatus: formatVerificationStatus(
+          employerProfile.verificationStatus
+        ),
+        verification: verification ? formatVerificationRequest(verification) : null,
+      })
+    } catch (error) {
+      console.error(error)
 
-    res.status(500).json({
-      status: "error",
-      message: "Failed to fetch employer verification.",
-    })
+      res.status(500).json({
+        status: "error",
+        message: "Failed to fetch employer verification.",
+      })
+    }
   }
-})
+)
 
 router.get("/admin/all", protect, allowRoles("ADMIN"), async (req, res) => {
   try {
@@ -268,9 +430,9 @@ router.get("/admin/all", protect, allowRoles("ADMIN"), async (req, res) => {
 router.patch("/:verificationId/status", protect, allowRoles("ADMIN"), async (req, res) => {
   try {
     const { verificationId } = req.params
-    const { status } = req.body
+    const requestedStatus = cleanText(req.body.status, 50)
 
-    const newStatus = normaliseVerificationStatus(status)
+    const newStatus = normaliseVerificationStatus(requestedStatus)
 
     if (!newStatus) {
       return res.status(400).json({
