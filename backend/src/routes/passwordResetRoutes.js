@@ -161,7 +161,6 @@ router.post("/request", async (req, res) => {
         channel === "EMAIL"
           ? "Password reset OTP has been sent to your email address."
           : "Password reset OTP has been sent to your phone number.",
-      devOtp: isProduction() ? undefined : otp,
     })
   } catch (error) {
     console.error(error)
