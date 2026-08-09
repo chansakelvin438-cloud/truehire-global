@@ -458,7 +458,7 @@ function PostJob() {
                   <h2 className="text-2xl font-extrabold">Logo Upload</h2>
 
                   <p className="mt-3 text-sm leading-7 text-zinc-400">
-                    Upload a JPG, PNG, WEBP, or SVG company logo. The maximum size is 2MB.
+                    Upload a JPG, PNG, or WEBP company logo. The maximum size is 2MB.
                   </p>
                 </div>
               </div>
@@ -544,14 +544,14 @@ function LogoUploadField({ logoPreview, selectedLogoName, onChange }) {
               <input
                 type="file"
                 name="companyLogoFile"
-                accept=".jpg,.jpeg,.png,.webp,.svg"
+                accept=".jpg,.jpeg,.png,.webp"
                 onChange={onChange}
                 className="hidden"
               />
             </label>
 
             <p className="mt-3 text-xs leading-5 text-zinc-500">
-              {selectedLogoName || "Accepted: JPG, PNG, WEBP, SVG. Maximum 2MB."}
+              {selectedLogoName || "Accepted: JPG, PNG, WEBP. Maximum 2MB."}
             </p>
           </div>
         </div>

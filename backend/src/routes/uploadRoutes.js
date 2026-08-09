@@ -2,9 +2,12 @@ import express from "express"
 import multer from "multer"
 import path from "path"
 import fs from "fs"
+import { randomUUID } from "crypto"
 import { protect, allowRoles } from "../middleware/authMiddleware.js"
 
 const router = express.Router()
+
+const ONE_MB = 1024 * 1024
 
 const companyLogoFolder = path.join(process.cwd(), "uploads", "company-logos")
 const cvFolder = path.join(process.cwd(), "uploads", "cvs")
@@ -27,126 +30,229 @@ const authorizationLetterFolder = path.join(
   "authorization-letters"
 )
 
-const folders = [
-  companyLogoFolder,
-  cvFolder,
-  businessRegistrationFolder,
-  taxDocumentFolder,
-  authorizationLetterFolder,
-]
+const uploadProfiles = {
+  companyLogo: {
+    folder: companyLogoFolder,
+    maxSize: 2 * ONE_MB,
+    allowedExtensions: [".jpg", ".jpeg", ".png", ".webp"],
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    publicPath: "/uploads/company-logos",
+    successMessage: "Company logo uploaded successfully.",
+    errorLabel: "company logo",
+  },
 
-for (const folder of folders) {
-  if (!fs.existsSync(folder)) {
-    fs.mkdirSync(folder, { recursive: true })
+  cv: {
+    folder: cvFolder,
+    maxSize: 5 * ONE_MB,
+    allowedExtensions: [".pdf", ".doc", ".docx"],
+    allowedMimeTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ],
+    publicPath: "/api/files/cvs",
+    successMessage: "CV uploaded successfully.",
+    errorLabel: "CV",
+  },
+
+  businessRegistration: {
+    folder: businessRegistrationFolder,
+    maxSize: 5 * ONE_MB,
+    allowedExtensions: [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp"],
+    allowedMimeTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ],
+    publicPath: "/api/files/verification/business-registration",
+    successMessage: "Business registration document uploaded successfully.",
+    errorLabel: "business registration document",
+  },
+
+  taxDocument: {
+    folder: taxDocumentFolder,
+    maxSize: 5 * ONE_MB,
+    allowedExtensions: [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp"],
+    allowedMimeTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ],
+    publicPath: "/api/files/verification/tax-documents",
+    successMessage: "Tax document uploaded successfully.",
+    errorLabel: "tax document",
+  },
+
+  authorizationLetter: {
+    folder: authorizationLetterFolder,
+    maxSize: 5 * ONE_MB,
+    allowedExtensions: [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp"],
+    allowedMimeTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ],
+    publicPath: "/api/files/verification/authorization-letters",
+    successMessage: "Authorization letter uploaded successfully.",
+    errorLabel: "authorization letter",
+  },
+}
+
+for (const profile of Object.values(uploadProfiles)) {
+  if (!fs.existsSync(profile.folder)) {
+    fs.mkdirSync(profile.folder, { recursive: true })
   }
 }
 
-function createStorage(folder) {
-  return multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, folder)
-    },
-    filename: function (req, file, cb) {
-      const safeOriginalName = file.originalname
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9.-]/g, "")
+function formatFileSize(bytes) {
+  const mb = bytes / ONE_MB
+  return `${mb.toFixed(mb >= 10 ? 0 : 1)}MB`
+}
 
-      const uniqueName = `${Date.now()}-${safeOriginalName}`
+function getExtension(file) {
+  return path.extname(file.originalname || "").toLowerCase()
+}
+
+function createStorage(profile) {
+  return multer.diskStorage({
+    destination(req, file, cb) {
+      cb(null, profile.folder)
+    },
+
+    filename(req, file, cb) {
+      const extension = getExtension(file)
+      const uniqueName = `${Date.now()}-${randomUUID()}${extension}`
 
       cb(null, uniqueName)
     },
   })
 }
 
-function imageFileFilter(req, file, cb) {
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"]
+function createFileFilter(profile) {
+  return function fileFilter(req, file, cb) {
+    const extension = getExtension(file)
 
-  if (!allowedTypes.includes(file.mimetype)) {
-    return cb(new Error("Only JPG, PNG, WEBP, and SVG images are allowed."))
+    if (!profile.allowedExtensions.includes(extension)) {
+      return cb(
+        new Error(
+          `Invalid ${profile.errorLabel} extension. Allowed: ${profile.allowedExtensions.join(
+            ", "
+          )}.`
+        )
+      )
+    }
+
+    if (!profile.allowedMimeTypes.includes(file.mimetype)) {
+      return cb(
+        new Error(
+          `Invalid ${profile.errorLabel} type. Please upload an allowed file format.`
+        )
+      )
+    }
+
+    return cb(null, true)
   }
-
-  cb(null, true)
 }
 
-function cvFileFilter(req, file, cb) {
-  const allowedTypes = [
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  ]
-
-  if (!allowedTypes.includes(file.mimetype)) {
-    return cb(new Error("Only PDF, DOC, and DOCX files are allowed."))
-  }
-
-  cb(null, true)
+function createUpload(profile) {
+  return multer({
+    storage: createStorage(profile),
+    fileFilter: createFileFilter(profile),
+    limits: {
+      fileSize: profile.maxSize,
+      files: 1,
+    },
+  }).single("file")
 }
 
-function verificationDocumentFileFilter(req, file, cb) {
-  const allowedTypes = [
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ]
+function hasBytes(buffer, bytes) {
+  if (buffer.length < bytes.length) return false
 
-  if (!allowedTypes.includes(file.mimetype)) {
-    return cb(
-      new Error("Only PDF, DOC, DOCX, JPG, PNG, and WEBP files are allowed.")
-    )
-  }
-
-  cb(null, true)
+  return bytes.every((byte, index) => buffer[index] === byte)
 }
 
-const companyLogoUpload = multer({
-  storage: createStorage(companyLogoFolder),
-  fileFilter: imageFileFilter,
-  limits: {
-    fileSize: 2 * 1024 * 1024,
-  },
-})
+function isPdf(buffer) {
+  return buffer.slice(0, 4).toString("utf8") === "%PDF"
+}
 
-const cvUpload = multer({
-  storage: createStorage(cvFolder),
-  fileFilter: cvFileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
-})
+function isJpeg(buffer) {
+  return hasBytes(buffer, [0xff, 0xd8, 0xff])
+}
 
-const businessRegistrationUpload = multer({
-  storage: createStorage(businessRegistrationFolder),
-  fileFilter: verificationDocumentFileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
-})
+function isPng(buffer) {
+  return hasBytes(buffer, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+}
 
-const taxDocumentUpload = multer({
-  storage: createStorage(taxDocumentFolder),
-  fileFilter: verificationDocumentFileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
-})
+function isWebp(buffer) {
+  return (
+    buffer.slice(0, 4).toString("utf8") === "RIFF" &&
+    buffer.slice(8, 12).toString("utf8") === "WEBP"
+  )
+}
 
-const authorizationLetterUpload = multer({
-  storage: createStorage(authorizationLetterFolder),
-  fileFilter: verificationDocumentFileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
-})
+function isDoc(buffer) {
+  return hasBytes(buffer, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
+}
+
+function isDocx(buffer) {
+  return buffer.slice(0, 2).toString("utf8") === "PK"
+}
+
+function fileSignatureMatches(filePath, extension) {
+  const buffer = fs.readFileSync(filePath)
+
+  if (extension === ".pdf") return isPdf(buffer)
+  if (extension === ".jpg" || extension === ".jpeg") return isJpeg(buffer)
+  if (extension === ".png") return isPng(buffer)
+  if (extension === ".webp") return isWebp(buffer)
+  if (extension === ".doc") return isDoc(buffer)
+  if (extension === ".docx") return isDocx(buffer)
+
+  return false
+}
+
+function deleteFileIfExists(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath)
+    }
+  } catch (error) {
+    console.error("Failed to delete unsafe upload:", error)
+  }
+}
 
 function getBaseUrl(req) {
   return `${req.protocol}://${req.get("host")}`
 }
 
-function sendUploadedFileResponse(req, res, publicPath, successMessage) {
+function getUploadErrorMessage(error, profile) {
+  if (error instanceof multer.MulterError) {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return `The ${profile.errorLabel} is too large. Maximum allowed size is ${formatFileSize(
+        profile.maxSize
+      )}.`
+    }
+
+    if (error.code === "LIMIT_FILE_COUNT") {
+      return "Only one file can be uploaded at a time."
+    }
+
+    return "Upload failed. Please check the selected file."
+  }
+
+  return error.message || "Upload failed. Please try again."
+}
+
+function sendUploadedFileResponse(req, res, profile) {
   if (!req.file) {
     return res.status(400).json({
       status: "error",
@@ -154,159 +260,93 @@ function sendUploadedFileResponse(req, res, publicPath, successMessage) {
     })
   }
 
+  const extension = getExtension(req.file)
+  const filePath = req.file.path
+
+  if (!fileSignatureMatches(filePath, extension)) {
+    deleteFileIfExists(filePath)
+
+    return res.status(400).json({
+      status: "error",
+      message:
+        "The uploaded file content does not match the selected file type. Please upload a valid file.",
+    })
+  }
+
   const baseUrl = getBaseUrl(req)
 
   return res.status(201).json({
     status: "success",
-    message: successMessage,
+    message: profile.successMessage,
     fileName: req.file.originalname,
     storedFileName: req.file.filename,
-    fileUrl: `${baseUrl}${publicPath}/${req.file.filename}`,
+    fileUrl: `${baseUrl}${profile.publicPath}/${req.file.filename}`,
   })
 }
 
-function sendProtectedUploadedFileResponse(
-  req,
-  res,
-  protectedPath,
-  successMessage
-) {
-  if (!req.file) {
-    return res.status(400).json({
-      status: "error",
-      message: "No file uploaded.",
+function handleUpload(profile) {
+  const upload = createUpload(profile)
+
+  return function uploadHandler(req, res) {
+    upload(req, res, (error) => {
+      if (error) {
+        return res.status(400).json({
+          status: "error",
+          message: getUploadErrorMessage(error, profile),
+        })
+      }
+
+      try {
+        return sendUploadedFileResponse(req, res, profile)
+      } catch (error) {
+        console.error(error)
+
+        if (req.file?.path) {
+          deleteFileIfExists(req.file.path)
+        }
+
+        return res.status(500).json({
+          status: "error",
+          message: `Failed to upload ${profile.errorLabel}.`,
+        })
+      }
     })
   }
-
-  const baseUrl = getBaseUrl(req)
-
-  return res.status(201).json({
-    status: "success",
-    message: successMessage,
-    fileName: req.file.originalname,
-    storedFileName: req.file.filename,
-    fileUrl: `${baseUrl}${protectedPath}/${req.file.filename}`,
-  })
 }
 
 router.post(
   "/company-logo",
   protect,
   allowRoles("EMPLOYER"),
-  companyLogoUpload.single("file"),
-  (req, res) => {
-    try {
-      return sendUploadedFileResponse(
-        req,
-        res,
-        "/uploads/company-logos",
-        "Company logo uploaded successfully."
-      )
-    } catch (error) {
-      console.error(error)
-
-      return res.status(500).json({
-        status: "error",
-        message: "Failed to upload company logo.",
-      })
-    }
-  }
+  handleUpload(uploadProfiles.companyLogo)
 )
 
 router.post(
   "/cv",
   protect,
   allowRoles("JOB_SEEKER"),
-  cvUpload.single("file"),
-  (req, res) => {
-    try {
-      return sendProtectedUploadedFileResponse(
-        req,
-        res,
-        "/api/files/cvs",
-        "CV uploaded successfully."
-      )
-    } catch (error) {
-      console.error(error)
-
-      return res.status(500).json({
-        status: "error",
-        message: "Failed to upload CV.",
-      })
-    }
-  }
+  handleUpload(uploadProfiles.cv)
 )
 
 router.post(
   "/verification/business-registration",
   protect,
   allowRoles("EMPLOYER"),
-  businessRegistrationUpload.single("file"),
-  (req, res) => {
-    try {
-      return sendProtectedUploadedFileResponse(
-        req,
-        res,
-        "/api/files/verification/business-registration",
-        "Business registration document uploaded successfully."
-      )
-    } catch (error) {
-      console.error(error)
-
-      return res.status(500).json({
-        status: "error",
-        message: "Failed to upload business registration document.",
-      })
-    }
-  }
+  handleUpload(uploadProfiles.businessRegistration)
 )
 
 router.post(
   "/verification/tax-document",
   protect,
   allowRoles("EMPLOYER"),
-  taxDocumentUpload.single("file"),
-  (req, res) => {
-    try {
-      return sendProtectedUploadedFileResponse(
-        req,
-        res,
-        "/api/files/verification/tax-documents",
-        "Tax document uploaded successfully."
-      )
-    } catch (error) {
-      console.error(error)
-
-      return res.status(500).json({
-        status: "error",
-        message: "Failed to upload tax document.",
-      })
-    }
-  }
+  handleUpload(uploadProfiles.taxDocument)
 )
 
 router.post(
   "/verification/authorization-letter",
   protect,
   allowRoles("EMPLOYER"),
-  authorizationLetterUpload.single("file"),
-  (req, res) => {
-    try {
-      return sendProtectedUploadedFileResponse(
-        req,
-        res,
-        "/api/files/verification/authorization-letters",
-        "Authorization letter uploaded successfully."
-      )
-    } catch (error) {
-      console.error(error)
-
-      return res.status(500).json({
-        status: "error",
-        message: "Failed to upload authorization letter.",
-      })
-    }
-  }
+  handleUpload(uploadProfiles.authorizationLetter)
 )
 
 export default router
