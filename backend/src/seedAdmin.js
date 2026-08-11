@@ -1,18 +1,38 @@
+import dotenv from "dotenv"
 import bcrypt from "bcryptjs"
 import prisma from "./config/prisma.js"
 
-async function seedAdmin() {
-  const adminEmail = "admin@truehireglobal.com"
-  const adminPassword = "Admin12345"
+dotenv.config()
 
-  const existingAdmin = await prisma.user.findUnique({
-    where: { email: adminEmail },
+const isProduction = process.env.NODE_ENV === "production"
+
+const adminEmail = process.env.ADMIN_EMAIL || "no-reply@truehireglobal.com"
+const adminName = process.env.ADMIN_NAME || "TrueHire Admin"
+
+const adminPassword =
+  process.env.ADMIN_PASSWORD || (isProduction ? "" : "Admin12345")
+
+async function main() {
+  const existingAdmin = await prisma.user.findFirst({
+    where: {
+      role: "ADMIN",
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+    },
   })
 
   if (existingAdmin) {
-    console.log("Admin account already exists.")
-    console.log(`Email: ${adminEmail}`)
+    console.log(`Admin already exists: ${existingAdmin.email}`)
     return
+  }
+
+  if (!adminPassword || adminPassword.length < 8) {
+    throw new Error(
+      "ADMIN_PASSWORD must be set and must be at least 8 characters long."
+    )
   }
 
   const hashedPassword = await bcrypt.hash(adminPassword, 10)
@@ -20,22 +40,19 @@ async function seedAdmin() {
   const admin = await prisma.user.create({
     data: {
       role: "ADMIN",
-      name: "TrueHire Global Admin",
+      name: adminName,
       email: adminEmail,
-      phone: "+260000000000",
       password: hashedPassword,
     },
   })
 
-  console.log("Admin account created successfully.")
-  console.log(`Email: ${adminEmail}`)
-  console.log(`Password: ${adminPassword}`)
-  console.log(`Admin ID: ${admin.id}`)
+  console.log(`Admin user created: ${admin.email}`)
 }
 
-seedAdmin()
+main()
   .catch((error) => {
     console.error(error)
+    process.exit(1)
   })
   .finally(async () => {
     await prisma.$disconnect()
