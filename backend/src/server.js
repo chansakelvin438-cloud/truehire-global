@@ -27,10 +27,11 @@ const isProduction = process.env.NODE_ENV === "production"
 app.set("trust proxy", 1)
 
 const allowedOrigins = [
-  CLIENT_URL,
+  process.env.CLIENT_URL,
+  "https://truehireglobal.com",
+  "https://www.truehireglobal.com",
   "http://localhost:5173",
-  "http://127.0.0.1:5173",
-]
+].filter(Boolean)
 
 app.use(
   helmet({
