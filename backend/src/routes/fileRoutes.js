@@ -1,67 +1,27 @@
 import express from "express"
-import path from "path"
-import fs from "fs"
 import prisma from "../config/prisma.js"
 import { protect } from "../middleware/authMiddleware.js"
+import {
+  downloadFromSupabaseStorage,
+  storageBuckets,
+} from "../services/storageService.js"
 
 const router = express.Router()
 
-function getSafeFileName(fileName) {
-  if (!fileName) return null
-
-  const cleanFileName = path.basename(fileName)
-
-  if (
-    cleanFileName !== fileName ||
-    cleanFileName.includes("..") ||
-    cleanFileName.includes("/") ||
-    cleanFileName.includes("\\")
-  ) {
-    return null
-  }
-
-  return cleanFileName
-}
-
-function sendProtectedFile(res, folderPath, fileName) {
-  const safeFileName = getSafeFileName(fileName)
-
-  if (!safeFileName) {
-    return res.status(400).json({
-      status: "error",
-      message: "Invalid file request.",
-    })
-  }
-
-  const filePath = path.join(folderPath, safeFileName)
-
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({
-      status: "error",
-      message: "File not found.",
-    })
-  }
-
-  return res.sendFile(filePath)
+function sendFileResponse(res, { buffer, contentType, fileName }) {
+  res.setHeader("Content-Type", contentType)
+  res.setHeader("Content-Disposition", `inline; filename="${fileName}"`)
+  res.send(buffer)
 }
 
 router.get("/cvs/:fileName", protect, async (req, res) => {
   try {
     const { fileName } = req.params
-    const safeFileName = getSafeFileName(fileName)
-
-    if (!safeFileName) {
-      return res.status(400).json({
-        status: "error",
-        message: "Invalid CV request.",
-      })
-    }
+    const user = req.user
 
     const application = await prisma.application.findFirst({
       where: {
-        cvFileUrl: {
-          contains: safeFileName,
-        },
+        OR: [{ cvFileName: fileName }, { cvFileUrl: { contains: fileName } }],
       },
       include: {
         job: {
@@ -75,32 +35,37 @@ router.get("/cvs/:fileName", protect, async (req, res) => {
     if (!application) {
       return res.status(404).json({
         status: "error",
-        message: "CV record not found.",
+        message: "CV not found.",
       })
     }
 
-    const isAdmin = req.user.role === "ADMIN"
-    const isApplicant = application.userId === req.user.id
-    const isEmployer =
-      req.user.role === "EMPLOYER" &&
-      application.job?.employer?.userId === req.user.id
+    const isAdmin = user.role === "ADMIN"
+    const isApplicant = application.userId === user.id
+    const isEmployerOwner =
+      user.role === "EMPLOYER" &&
+      application.job?.employer?.userId === user.id
 
-    if (!isAdmin && !isApplicant && !isEmployer) {
+    if (!isAdmin && !isApplicant && !isEmployerOwner) {
       return res.status(403).json({
         status: "error",
-        message: "You are not allowed to open this CV.",
+        message: "You are not allowed to access this CV.",
       })
     }
 
-    const cvFolder = path.join(process.cwd(), "uploads", "cvs")
+    const file = await downloadFromSupabaseStorage({
+      bucket: storageBuckets.cvs,
+      filePath: fileName,
+    })
 
-    return sendProtectedFile(res, cvFolder, safeFileName)
+    sendFileResponse(res, {
+      ...file,
+      fileName,
+    })
   } catch (error) {
     console.error(error)
-
-    return res.status(500).json({
+    res.status(500).json({
       status: "error",
-      message: "Failed to open CV.",
+      message: "Could not open file.",
     })
   }
 })
@@ -111,59 +76,31 @@ router.get(
   async (req, res) => {
     try {
       const { documentType, fileName } = req.params
-      const safeFileName = getSafeFileName(fileName)
+      const user = req.user
 
-      if (!safeFileName) {
+      const allowedDocumentTypes = [
+        "business-registration",
+        "tax-document",
+        "authorization-letter",
+      ]
+
+      if (!allowedDocumentTypes.includes(documentType)) {
         return res.status(400).json({
           status: "error",
-          message: "Invalid document request.",
-        })
-      }
-
-      const documentConfig = {
-        "business-registration": {
-          fieldName: "businessRegistrationFileUrl",
-          folderPath: path.join(
-            process.cwd(),
-            "uploads",
-            "verification-documents",
-            "business-registration"
-          ),
-        },
-        "tax-documents": {
-          fieldName: "taxDocumentFileUrl",
-          folderPath: path.join(
-            process.cwd(),
-            "uploads",
-            "verification-documents",
-            "tax-documents"
-          ),
-        },
-        "authorization-letters": {
-          fieldName: "authorizationLetterFileUrl",
-          folderPath: path.join(
-            process.cwd(),
-            "uploads",
-            "verification-documents",
-            "authorization-letters"
-          ),
-        },
-      }
-
-      const selectedDocument = documentConfig[documentType]
-
-      if (!selectedDocument) {
-        return res.status(400).json({
-          status: "error",
-          message: "Invalid verification document type.",
+          message: "Invalid document type.",
         })
       }
 
       const verification = await prisma.employerVerification.findFirst({
         where: {
-          [selectedDocument.fieldName]: {
-            contains: safeFileName,
-          },
+          OR: [
+            { businessRegistrationFileName: fileName },
+            { businessRegistrationFileUrl: { contains: fileName } },
+            { taxDocumentFileName: fileName },
+            { taxDocumentFileUrl: { contains: fileName } },
+            { authorizationLetterFileName: fileName },
+            { authorizationLetterFileUrl: { contains: fileName } },
+          ],
         },
         include: {
           employer: true,
@@ -173,33 +110,35 @@ router.get(
       if (!verification) {
         return res.status(404).json({
           status: "error",
-          message: "Verification document record not found.",
+          message: "Verification document not found.",
         })
       }
 
-      const isAdmin = req.user.role === "ADMIN"
+      const isAdmin = user.role === "ADMIN"
       const isEmployerOwner =
-        req.user.role === "EMPLOYER" &&
-        verification.employer?.userId === req.user.id
+        user.role === "EMPLOYER" && verification.employer?.userId === user.id
 
       if (!isAdmin && !isEmployerOwner) {
         return res.status(403).json({
           status: "error",
-          message: "You are not allowed to open this document.",
+          message: "You are not allowed to access this document.",
         })
       }
 
-      return sendProtectedFile(
-        res,
-        selectedDocument.folderPath,
-        safeFileName
-      )
+      const file = await downloadFromSupabaseStorage({
+        bucket: storageBuckets.verificationDocs,
+        filePath: `${documentType}/${fileName}`,
+      })
+
+      sendFileResponse(res, {
+        ...file,
+        fileName,
+      })
     } catch (error) {
       console.error(error)
-
-      return res.status(500).json({
+      res.status(500).json({
         status: "error",
-        message: "Failed to open verification document.",
+        message: "Could not open file.",
       })
     }
   }

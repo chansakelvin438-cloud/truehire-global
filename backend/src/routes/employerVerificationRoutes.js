@@ -50,29 +50,32 @@ function isValidWebsiteUrl(website) {
 }
 
 function isAllowedVerificationDocumentUrl(fileUrl, documentType) {
-  if (!fileUrl) return true
-
-  const url = String(fileUrl)
-
-  if (url.startsWith("javascript:")) return false
-  if (url.startsWith("data:")) return false
-
-  const allowedPaths = {
-    businessRegistration: [
-      "/api/files/verification/business-registration/",
-      "/uploads/verification-documents/business-registration/",
-    ],
-    taxDocument: [
-      "/api/files/verification/tax-documents/",
-      "/uploads/verification-documents/tax-documents/",
-    ],
-    authorizationLetter: [
-      "/api/files/verification/authorization-letters/",
-      "/uploads/verification-documents/authorization-letters/",
-    ],
+  if (!fileUrl || typeof fileUrl !== "string") {
+    return false
   }
 
-  return allowedPaths[documentType].some((path) => url.includes(path))
+  const documentTypeMap = {
+    businessRegistration: "business-registration",
+    taxDocument: "tax-document",
+    authorizationLetter: "authorization-letter",
+    "business-registration": "business-registration",
+    "tax-document": "tax-document",
+    "authorization-letter": "authorization-letter",
+  }
+
+  const storageDocumentType = documentTypeMap[documentType]
+
+  if (!storageDocumentType) {
+    return false
+  }
+
+  const allowedNewPath = `/api/files/verification/${storageDocumentType}/`
+  const allowedOldPath = "/uploads/verification-documents/"
+
+  return (
+    fileUrl.startsWith(allowedNewPath) ||
+    fileUrl.startsWith(allowedOldPath)
+  )
 }
 
 function formatVerificationRequest(request) {
