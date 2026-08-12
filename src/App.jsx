@@ -22,6 +22,7 @@ import Privacy from "./pages/Privacy"
 import Terms from "./pages/Terms"
 import ForgotPassword from "./pages/ForgotPassword"
 import ResetPassword from "./pages/ResetPassword"
+import Pricing from "./pages/Pricing"
 
 function App() {
   return (
@@ -67,7 +68,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/safety" element={<Safety />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />

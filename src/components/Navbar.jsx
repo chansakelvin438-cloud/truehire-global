@@ -160,6 +160,7 @@ function Navbar() {
             >
               Employers
             </NavLink>
+            <Link to="/pricing">Pricing</Link>
 
             <NavLink
               to="/safety"
