@@ -474,8 +474,11 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
         experience: experience || "",
         description,
         requirements,
-        status: "PENDING_REVIEW",
-        paymentStatus: "PAYMENT_DISABLED",
+        status: "PENDING_PAYMENT",
+        paymentStatus: "PENDING_PAYMENT",
+        pricingPlan: "LAUNCH_OFFER",
+        amountDue: 50,
+        currency: "ZMW",
         scamRiskLevel: risk.level,
         scamRiskScore: risk.score,
         scamRiskReasons: JSON.stringify(risk.reasons),
@@ -598,6 +601,12 @@ router.patch("/:jobId/status", protect, allowRoles("ADMIN"), async (req, res) =>
         status: "error",
         message: "Job not found.",
       })
+    }
+    if (status === "APPROVED" && job.paymentStatus !== "PAID") {
+        return res.status(400).json({
+            status: "error",
+            message: "This job cannot be approved until payment is confirmed.",
+        })
     }
 
     const deadlineInfo = getDeadlineInfo(existingJob.deadline)

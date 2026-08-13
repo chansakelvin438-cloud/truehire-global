@@ -15,6 +15,7 @@ enum UserRole {
 }
 
 enum JobStatus {
+  PENDING_PAYMENT
   PENDING_REVIEW
   APPROVED
   FLAGGED
@@ -92,35 +93,39 @@ model EmployerProfile {
   user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobs                 Job[]
   verificationRequests EmployerVerification[]
+  paymentSubmissions   PaymentSubmission[]
 }
 
 model Job {
-  id              String    @id @default(cuid())
-  employerId      String?
-  title           String
-  company         String
-  companyLogo     String?
-  email           String
-  phone           String?
-  location        String
-  type            String
-  category        String
-  salary          String?
-  deadline        String
-  experience      String?
-  description     String
-  requirements    String
-  status          JobStatus @default(PENDING_REVIEW)
-  paymentStatus   String    @default("PAYMENT_DISABLED")
-  scamRiskLevel   String?
-  scamRiskScore   Int?
-  scamRiskReasons String?
-  adminNote       String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  employer     EmployerProfile? @relation(fields: [employerId], references: [id], onDelete: SetNull)
-  applications Application[]
+  id                 String              @id @default(cuid())
+  employerId         String?
+  title              String
+  company            String
+  companyLogo        String?
+  email              String
+  phone              String?
+  location           String
+  type               String
+  category           String
+  salary             String?
+  deadline           String
+  experience         String?
+  description        String
+  requirements       String
+  status             JobStatus           @default(PENDING_PAYMENT)
+  paymentStatus      String              @default("PENDING_PAYMENT")
+  pricingPlan        String              @default("LAUNCH_OFFER")
+  amountDue          Int                 @default(50)
+  currency           String              @default("ZMW")
+  scamRiskLevel      String?
+  scamRiskScore      Int?
+  scamRiskReasons    String?
+  adminNote          String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  employer           EmployerProfile?    @relation(fields: [employerId], references: [id], onDelete: SetNull)
+  applications       Application[]
+  paymentSubmissions PaymentSubmission[]
 }
 
 model Application {
@@ -202,4 +207,23 @@ model PasswordResetOtp {
   createdAt      DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PaymentSubmission {
+  id                   String   @id @default(cuid())
+  jobId                String
+  employerId           String
+  amount               Int      @default(50)
+  currency             String   @default("ZMW")
+  paymentMethod        String
+  transactionReference String
+  payerPhone           String?
+  note                 String?
+  status               String   @default("SUBMITTED")
+  adminNote            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  job      Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  employer EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
 }

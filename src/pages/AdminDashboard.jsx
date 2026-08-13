@@ -16,6 +16,7 @@ import Footer from "../components/Footer"
 import SafetyReportsPanel from "../components/SafetyReportsPanel"
 import EmployerVerificationPanel from "../components/EmployerVerificationPanel"
 import { getAdminJobs, updateAdminJobStatus } from "../services/api"
+import AdminPaymentsPanel from "../components/AdminPaymentsPanel"
 
 function AdminDashboard() {
   const [employerJobs, setEmployerJobs] = useState([])
@@ -415,6 +416,7 @@ function AdminDashboard() {
                 </div>
               </div>
 
+              <AdminPaymentsPanel />
               <SafetyReportsPanel />
 
               <div className="rounded-[2rem] border border-red-400/20 bg-red-400/10 p-6">

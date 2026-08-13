@@ -16,6 +16,7 @@ import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
 import EmployerApplicationsPanel from "../components/EmployerApplicationsPanel"
 import { getMyEmployerJobs } from "../services/api"
+import EmployerPaymentsPanel from "../components/EmployerPaymentsPanel"
 
 function EmployerDashboard() {
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
@@ -184,14 +185,13 @@ function EmployerDashboard() {
                     />
 
                     <div>
-                      <h3 className="font-bold text-yellow-300">
-                        Payments Disabled
-                      </h3>
+                     <h3 className="font-bold text-yellow-300">
+                        Manual Payment Active
+                     </h3>
 
-                      <p className="mt-2 text-sm leading-6 text-zinc-300">
-                        Employer payments will stay disabled until backend security and
-                        fraud controls are ready.
-                      </p>
+                     <p className="mt-2 text-sm leading-6 text-zinc-300">
+                        Employers can now submit mobile money or bank transaction references for admin confirmation. Automatic online checkout will be added after Flutterwave API access is approved.
+                     </p>
                     </div>
                   </div>
                 </div>
@@ -238,6 +238,7 @@ function EmployerDashboard() {
           </div>
 
           <div className="mt-12">
+            <EmployerPaymentsPanel />
             <EmployerApplicationsPanel />
           </div>
 
@@ -446,15 +447,14 @@ function EmployerDashboard() {
               </div>
 
               <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-                <h2 className="text-2xl font-extrabold">Future Payment Plan</h2>
+                <h2 className="text-2xl font-extrabold">Manual Payment Plan</h2>
 
                 <p className="mt-3 text-sm leading-7 text-zinc-400">
-                  Employers will later pay $3 per approved job advert once secure payment
-                  handling is added.
+                  Employers currently pay the K50 launch advert fee manually and submit the transaction reference for admin confirmation. Automatic online checkout will be added later.
                 </p>
 
                 <p className="mt-5 rounded-full bg-yellow-400/10 px-4 py-2 text-center text-sm font-bold text-yellow-300">
-                  Payments Disabled
+                  Manual Payment Active
                 </p>
               </div>
             </aside>

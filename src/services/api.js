@@ -383,3 +383,25 @@ export function confirmPasswordReset(resetData) {
     body: JSON.stringify(resetData),
   })
 }
+
+export function submitManualPayment(paymentData) {
+  return apiRequest("/payments/manual-submit", {
+    method: "POST",
+    body: JSON.stringify(paymentData),
+  })
+}
+
+export function getMyPayments() {
+  return apiRequest("/payments/my-payments")
+}
+
+export function getAdminPayments() {
+  return apiRequest("/payments/admin")
+}
+
+export function updateAdminPaymentStatus(paymentId, statusData) {
+  return apiRequest(`/payments/admin/${paymentId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify(statusData),
+  })
+}
