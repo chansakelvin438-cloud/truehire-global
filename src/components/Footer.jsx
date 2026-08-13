@@ -43,61 +43,51 @@ function Footer() {
           </div>
 
           <div>
-            <h3 className="font-extrabold text-white">Platform</h3>
+            <h3 className="text-lg font-black text-white">Support</h3>
 
-            <div className="mt-5 space-y-3 text-sm text-zinc-400">
-              <Link to="/jobs" className="block hover:text-teal-300">
-                Find Jobs
-              </Link>
-
+            <nav className="mt-5 flex flex-col gap-4 text-sm font-bold">
               <Link
-                to="/employers/post-job"
-                className="block hover:text-teal-300"
+                to="/contact"
+                className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
               >
-                Post a Job
-              </Link>
-
-              <Link
-                to="/employer-verification"
-                className="block hover:text-teal-300"
-              >
-                Employer Verification
-              </Link>
-
-              <Link to="/safety" className="block hover:text-teal-300">
-                Safety Centre
-              </Link>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="font-extrabold text-white">Support</h3>
-
-            <div className="mt-5 space-y-3 text-sm text-zinc-400">
-              <Link to="/contact" className="block hover:text-teal-300">
                 Contact Support
               </Link>
 
               <Link
-                to="/contact?type=report"
-                className="block hover:text-red-300"
+                to="/safety"
+                className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
               >
                 Report a Fake Job
               </Link>
 
-              <Link to="/about" className="block hover:text-teal-300">
+              <Link
+                to="/about"
+                className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
+              >
                 About TrueHire
               </Link>
-              <Link to="/privacy" className="block hover:text-teal-300">
+
+              <Link
+                to="/privacy"
+                className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
+              >
                 Privacy Policy
               </Link>
 
-              <Link to="/terms" className="block hover:text-yellow-300">
+              <Link
+                to="/terms"
+                className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
+              >
                 Terms of Use
               </Link>
-              <Link to="/payment-policy" className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300">
+
+              <Link
+                to="/payment-policy"
+                className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
+              >
                 Payment Policy
               </Link>
+
               <Link
                 to="/job-posting-policy"
                 className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
@@ -105,11 +95,15 @@ function Footer() {
                 Job Posting Policy
               </Link>
 
-              <Link to="/register" className="block hover:text-yellow-300">
+              <Link
+                to="/register"
+                className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
+              >
                 Create Account
               </Link>
-            </div>
+            </nav>
           </div>
+
         </div>
 
         <div className="mt-10 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 text-sm text-zinc-500 md:flex-row">
