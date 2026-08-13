@@ -26,10 +26,12 @@ import Pricing from "./pages/Pricing"
 import AuthSessionTimeout from "./components/AuthSessionTimeout"
 import PaymentPolicy from "./pages/PaymentPolicy"
 import JobPostingPolicy from "./pages/JobPostingPolicy"
+import ScrollToTop from "./components/ScrollToTop"
 
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthSessionTimeout />
       <Routes>
         <Route path="/" element={<Home />} />

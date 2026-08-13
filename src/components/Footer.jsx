@@ -82,6 +82,13 @@ function Footer() {
               </Link>
 
               <Link
+                to="/pricing"
+                className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
+              >
+                Pricing
+              </Link>
+
+              <Link
                 to="/payment-policy"
                 className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
               >
