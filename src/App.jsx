@@ -23,10 +23,12 @@ import Terms from "./pages/Terms"
 import ForgotPassword from "./pages/ForgotPassword"
 import ResetPassword from "./pages/ResetPassword"
 import Pricing from "./pages/Pricing"
+import AuthSessionTimeout from "./components/AuthSessionTimeout"
 
 function App() {
   return (
     <BrowserRouter>
+      <AuthSessionTimeout />
       <Routes>
         <Route path="/" element={<Home />} />
 

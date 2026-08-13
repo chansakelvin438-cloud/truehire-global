@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import {
   ArrowRight,
@@ -71,7 +71,12 @@ function normaliseCurrentUser(user) {
     jobSeekerProfile: user.jobSeekerProfile,
   }
 }
-
+  useEffect(() => {
+    if (sessionStorage.getItem("sessionExpired") === "true") {
+      setError("Your session expired due to inactivity. Please sign in again.")
+      sessionStorage.removeItem("sessionExpired")
+    }
+  }, [])
 async function handleSignIn(event) {
   event.preventDefault()
 
