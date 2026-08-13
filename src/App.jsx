@@ -25,6 +25,7 @@ import ResetPassword from "./pages/ResetPassword"
 import Pricing from "./pages/Pricing"
 import AuthSessionTimeout from "./components/AuthSessionTimeout"
 import PaymentPolicy from "./pages/PaymentPolicy"
+import JobPostingPolicy from "./pages/JobPostingPolicy"
 
 function App() {
   return (
@@ -118,6 +119,7 @@ function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/payment-policy" element={<PaymentPolicy />} />
+        <Route path="/job-posting-policy" element={<JobPostingPolicy />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
