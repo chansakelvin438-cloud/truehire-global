@@ -95,6 +95,9 @@ function Footer() {
               <Link to="/terms" className="block hover:text-yellow-300">
                 Terms of Use
               </Link>
+              <Link to="/payment-policy" className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300">
+                Payment Policy
+              </Link>
 
               <Link to="/register" className="block hover:text-yellow-300">
                 Create Account

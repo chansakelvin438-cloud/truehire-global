@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
 import { CheckCircle, ShieldCheck, Star, Zap, Building2 } from "lucide-react"
@@ -146,13 +147,16 @@ export default function Pricing() {
           </div>
 
           <div className="mt-12 rounded-3xl border border-yellow-400/20 bg-yellow-400/10 p-6">
-            <h3 className="text-xl font-black text-yellow-300">
-              Payments are currently disabled
-            </h3>
             <p className="mt-3 text-zinc-300">
-              Employers can view the pricing structure now, but online payments
-              will be activated after production file storage and payment
-              security checks are completed.
+              Employers can view the pricing structure now and submit manual payment
+              confirmations after posting a job. Please review our{" "}
+              <Link
+                to="/payment-policy"
+                className="font-bold text-yellow-300 hover:text-yellow-200"
+              >
+                Payment & Refund Policy
+              </Link>{" "}
+              before submitting payment.
             </p>
           </div>
         </div>
