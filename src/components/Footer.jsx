@@ -110,6 +110,13 @@ function Footer() {
               </Link>
 
               <Link
+                to="/applicant-safety-policy"
+                className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
+              >
+                Applicant Safety Policy
+              </Link>
+
+              <Link
                 to="/register"
                 className="text-zinc-400 transition-colors duration-200 hover:text-yellow-300"
               >

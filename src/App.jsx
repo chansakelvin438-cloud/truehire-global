@@ -28,6 +28,7 @@ import PaymentPolicy from "./pages/PaymentPolicy"
 import JobPostingPolicy from "./pages/JobPostingPolicy"
 import ScrollToTop from "./components/ScrollToTop"
 import EmployerVerificationPolicy from "./pages/EmployerVerificationPolicy"
+import ApplicantSafetyPolicy from "./pages/ApplicantSafetyPolicy"
 
 function App() {
   return (
@@ -124,6 +125,7 @@ function App() {
         <Route path="/payment-policy" element={<PaymentPolicy />} />
         <Route path="/job-posting-policy" element={<JobPostingPolicy />} />
         <Route path="/employer-verification-policy" element={<EmployerVerificationPolicy />} />
+        <Route path="/applicant-safety-policy" element={<ApplicantSafetyPolicy />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
