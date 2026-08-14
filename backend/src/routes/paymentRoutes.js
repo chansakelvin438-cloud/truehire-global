@@ -1,6 +1,7 @@
 import express from "express"
 import prisma from "../config/prisma.js"
 import { protect, allowRoles } from "../middleware/authMiddleware.js"
+import { sendPaymentStatusEmail } from "../services/emailService.js"
 
 const router = express.Router()
 
@@ -251,6 +252,11 @@ router.patch(
         where: { id },
         include: {
           job: true,
+          employer: {
+            include: {
+              user: true,
+            },
+          },
         },
       })
 
@@ -269,6 +275,11 @@ router.patch(
         },
         include: {
           job: true,
+          employer: {
+            include: {
+              user: true,
+            },
+          },
         },
       })
 
@@ -290,6 +301,21 @@ router.patch(
             status: "PENDING_PAYMENT",
           },
         })
+      }
+
+      try {
+        if (payment.employer?.user?.email) {
+          await sendPaymentStatusEmail({
+            to: payment.employer.user.email,
+            employerName:
+              payment.employer.companyName || payment.employer.user.name,
+            jobTitle: payment.job?.title || "your job advert",
+            status,
+            adminNote: cleanText(adminNote),
+          })
+        }
+      } catch (emailError) {
+        console.error("Payment status email failed:", emailError)
       }
 
       res.json({

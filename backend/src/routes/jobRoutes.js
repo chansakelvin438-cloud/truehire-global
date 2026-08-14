@@ -8,6 +8,7 @@ import {
   isValidEmail,
   rejectDangerousInput,
 } from "../utils/validation.js"
+import { sendJobStatusEmail } from "../services/emailService.js"
 
 const router = express.Router()
 
@@ -592,7 +593,11 @@ router.patch("/:jobId/status", protect, allowRoles("ADMIN"), async (req, res) =>
         id: jobId,
       },
       include: {
-        employer: true,
+        employer: {
+          include: {
+            user: true,
+          },
+        },
       },
     })
 
@@ -602,7 +607,7 @@ router.patch("/:jobId/status", protect, allowRoles("ADMIN"), async (req, res) =>
         message: "Job not found.",
       })
     }
-    if (status === "APPROVED" && job.paymentStatus !== "PAID") {
+    if (requestedStatus === "APPROVED" && existingJob.paymentStatus !== "PAID") {
         return res.status(400).json({
             status: "error",
             message: "This job cannot be approved until payment is confirmed.",
@@ -645,6 +650,23 @@ router.patch("/:jobId/status", protect, allowRoles("ADMIN"), async (req, res) =>
         employer: true,
       },
     })
+    try {
+      if (
+        ["APPROVED", "REJECTED", "FLAGGED"].includes(requestedStatus) &&
+        existingJob.employer?.user?.email
+      ) {
+        await sendJobStatusEmail({
+          to: existingJob.employer.user.email,
+          employerName:
+            existingJob.employer.companyName || existingJob.employer.user.name,
+          jobTitle: existingJob.title,
+          status: requestedStatus,
+          adminNote,
+        })
+      }
+    } catch (emailError) {
+      console.error("Job status email failed:", emailError)
+    }
 
     res.json({
       status: "success",
