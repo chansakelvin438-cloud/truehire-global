@@ -16,6 +16,7 @@ import safetyReportRoutes from "./routes/safetyReportRoutes.js"
 import uploadRoutes from "./routes/uploadRoutes.js"
 import fileRoutes from "./routes/fileRoutes.js"
 import paymentRoutes from "./routes/paymentRoutes.js"
+import auditLogRoutes from "./routes/auditLogRoutes.js"
 
 dotenv.config()
 
@@ -168,6 +169,7 @@ app.use("/api/password-reset", passwordResetRoutes)
 app.use("/api/jobs", jobRoutes)
 app.use("/api/applications", applicationRoutes)
 app.use("/api/payments", paymentRoutes)
+app.use("/api/audit-logs", auditLogRoutes)
 app.use("/api/notifications", notificationRoutes)
 app.use("/api/employer-verifications", employerVerificationRoutes)
 app.use("/api/safety-reports", safetyReportRoutes)

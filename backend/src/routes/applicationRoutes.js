@@ -5,6 +5,7 @@ import {
   sendNewApplicationEmail,
   sendApplicationStatusEmail,
 } from "../services/emailService.js"
+import { createAuditLog } from "../services/auditLogServices.js"
 
 const router = express.Router()
 
@@ -333,6 +334,24 @@ router.patch(
         include: {
           job: true,
           user: true,
+        },
+      })
+
+      await createAuditLog({
+        req,
+        action: "EMPLOYER_UPDATED_APPLICATION_STATUS",
+        targetType: "Application",
+        targetId: existingApplication.id,
+        description: `Employer changed application status to ${newStatus} for applicant: ${existingApplication.fullName}`,
+        metadata: {
+          applicationId: existingApplication.id,
+          applicantName: existingApplication.fullName,
+          applicantEmail: existingApplication.email,
+          jobId: existingApplication.jobId,
+          jobTitle: existingApplication.job?.title,
+          employerId: employerProfile.id,
+          previousStatus: existingApplication.status,
+          newStatus,
         },
       })
 

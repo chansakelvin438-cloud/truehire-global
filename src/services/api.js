@@ -405,3 +405,17 @@ export function updateAdminPaymentStatus(paymentId, statusData) {
     body: JSON.stringify(statusData),
   })
 }
+
+export function getAdminAuditLogs(params = {}) {
+  const query = new URLSearchParams()
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, value)
+    }
+  })
+
+  const queryString = query.toString()
+
+  return apiRequest(`/audit-logs/admin${queryString ? `?${queryString}` : ""}`)
+}

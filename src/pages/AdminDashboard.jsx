@@ -17,6 +17,7 @@ import SafetyReportsPanel from "../components/SafetyReportsPanel"
 import EmployerVerificationPanel from "../components/EmployerVerificationPanel"
 import { getAdminJobs, updateAdminJobStatus } from "../services/api"
 import AdminPaymentsPanel from "../components/AdminPaymentsPanel"
+import AdminAuditLogPanel from "../components/AdminAuditLogPanel"
 
 function AdminDashboard() {
   const [employerJobs, setEmployerJobs] = useState([])
@@ -418,6 +419,9 @@ function AdminDashboard() {
 
               <AdminPaymentsPanel />
               <SafetyReportsPanel />
+              <div className="mt-12">
+                <AdminAuditLogPanel />
+              </div>
 
               <div className="rounded-[2rem] border border-red-400/20 bg-red-400/10 p-6">
                 <h2 className="text-2xl font-extrabold text-red-300">
@@ -431,16 +435,22 @@ function AdminDashboard() {
                 </p>
               </div>
 
-              <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
-                <h2 className="text-2xl font-extrabold">Payment Control</h2>
+              <div className="rounded-[2rem] border border-yellow-400/20 bg-white/5 p-6">
+                <h2 className="text-2xl font-extrabold text-white">Manual Payment Control</h2>
 
-                <p className="mt-3 text-sm leading-7 text-zinc-400">
-                  Payment activation must remain disabled until employer verification,
-                  fraud checks, and secure payment handling are properly implemented.
+                <p className="mt-4 text-sm leading-7 text-zinc-300">
+                  Manual payment confirmation is active. Employers can submit mobile money or
+                  bank transaction references, and admin must confirm or reject each payment
+                  before the job moves to review.
                 </p>
 
                 <p className="mt-5 rounded-full bg-yellow-400/10 px-4 py-2 text-center text-sm font-bold text-yellow-300">
-                  Payments Disabled
+                  Manual Payment Active
+                </p>
+
+                <p className="mt-3 text-xs leading-6 text-zinc-500">
+                  Automatic online checkout remains disabled until payment gateway access is
+                  available.
                 </p>
               </div>
             </aside>

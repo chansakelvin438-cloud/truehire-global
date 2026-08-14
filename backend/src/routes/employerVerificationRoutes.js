@@ -8,6 +8,7 @@ import {
   isValidEmail,
   rejectDangerousInput,
 } from "../utils/validation.js"
+import { createAuditLog } from "../services/auditLogServices.js"
 
 const router = express.Router()
 
@@ -320,6 +321,25 @@ router.post("/", protect, allowRoles("EMPLOYER"), async (req, res) => {
       },
     })
 
+    await createAuditLog({
+      req,
+      action: "EMPLOYER_SUBMITTED_VERIFICATION",
+      targetType: "EmployerVerification",
+      targetId: verification.id,
+      description: `Employer submitted verification for company: ${companyName}`,
+      metadata: {
+        verificationId: verification.id,
+        employerId: employerProfile.id,
+        companyName,
+        companyRegistrationNumber,
+        tpin,
+        businessType,
+        email,
+        phone,
+        status: verification.status,
+      },
+    })
+
     await prisma.employerProfile.update({
       where: {
         id: employerProfile.id,
@@ -470,6 +490,30 @@ router.patch("/:verificationId/status", protect, allowRoles("ADMIN"), async (req
             user: true,
           },
         },
+      },
+    })
+
+    await createAuditLog({
+      req,
+      action:
+        status === "VERIFIED"
+          ? "ADMIN_APPROVED_EMPLOYER_VERIFICATION"
+          : status === "REJECTED"
+            ? "ADMIN_REJECTED_EMPLOYER_VERIFICATION"
+            : status === "FLAGGED"
+              ? "ADMIN_FLAGGED_EMPLOYER_VERIFICATION"
+              : "ADMIN_UPDATED_EMPLOYER_VERIFICATION",
+      targetType: "EmployerVerification",
+      targetId: updatedVerification.id,
+      description: `Admin changed employer verification status to ${status}: ${updatedVerification.companyName}`,
+      metadata: {
+        verificationId: updatedVerification.id,
+        employerId: updatedVerification.employerId,
+        companyName: updatedVerification.companyName,
+        companyRegistrationNumber: updatedVerification.companyRegistrationNumber,
+        tpin: updatedVerification.tpin,
+        previousStatus: verification.status,
+        newStatus: status,
       },
     })
 

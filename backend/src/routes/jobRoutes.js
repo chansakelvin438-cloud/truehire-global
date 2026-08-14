@@ -9,6 +9,7 @@ import {
   rejectDangerousInput,
 } from "../utils/validation.js"
 import { sendJobStatusEmail } from "../services/emailService.js"
+import { createAuditLog } from "../services/auditLogServices.js"
 
 const router = express.Router()
 
@@ -650,6 +651,32 @@ router.patch("/:jobId/status", protect, allowRoles("ADMIN"), async (req, res) =>
         employer: true,
       },
     })
+
+    await createAuditLog({
+      req,
+      action:
+        requestedStatus === "APPROVED"
+          ? "ADMIN_APPROVED_JOB"
+          : requestedStatus === "REJECTED"
+            ? "ADMIN_REJECTED_JOB"
+            : requestedStatus === "FLAGGED"
+              ? "ADMIN_FLAGGED_JOB"
+              : "ADMIN_UPDATED_JOB_STATUS",
+      targetType: "Job",
+      targetId: existingJob.id,
+      description: `Admin changed job status to ${requestedStatus}: ${existingJob.title}`,
+      metadata: {
+        jobId: existingJob.id,
+        jobTitle: existingJob.title,
+        company: existingJob.company,
+        employerId: existingJob.employerId,
+        previousStatus: existingJob.status,
+        newStatus: requestedStatus,
+        paymentStatus: existingJob.paymentStatus,
+        adminNote,
+      },
+    })
+
     try {
       if (
         ["APPROVED", "REJECTED", "FLAGGED"].includes(requestedStatus) &&

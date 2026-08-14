@@ -227,3 +227,19 @@ model PaymentSubmission {
   job      Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
   employer EmployerProfile @relation(fields: [employerId], references: [id], onDelete: Cascade)
 }
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  actorId     String?
+  actorRole   String?
+  actorName   String?
+  actorEmail  String?
+  targetType  String
+  targetId    String?
+  description String
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+}

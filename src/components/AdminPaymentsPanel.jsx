@@ -197,48 +197,80 @@ export default function AdminPaymentsPanel() {
                     </span>
                   </div>
 
-                  <div className="mt-4 grid gap-3 text-sm text-zinc-300 md:grid-cols-2">
-                    <p>
-                      <span className="font-bold text-white">Employer:</span>{" "}
-                      {payment.employer?.companyName || "Not available"}
-                    </p>
+                  <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-2xl bg-black/20 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+                        Employer
+                        </p>
+                        <p className="mt-1 break-words text-sm font-bold text-white">
+                        {payment.employer?.companyName || payment.employerName || "Not available"}
+                        </p>
+                    </div>
 
-                    <p>
-                      <span className="font-bold text-white">Employer email:</span>{" "}
-                      {payment.employer?.user?.email || "Not available"}
-                    </p>
+                    <div className="rounded-2xl bg-black/20 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+                        Employer email
+                        </p>
+                        <p className="mt-1 break-words text-sm font-bold text-white">
+                        {payment.employer?.user?.email || payment.email || "Not available"}
+                        </p>
+                    </div>
 
-                    <p>
-                      <span className="font-bold text-white">Amount:</span>{" "}
-                      {payment.currency} {payment.amount}
-                    </p>
+                    <div className="rounded-2xl bg-black/20 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+                        Amount
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-white">
+                        {payment.currency || "ZMW"} {payment.amount}
+                        </p>
+                    </div>
 
-                    <p>
-                      <span className="font-bold text-white">Method:</span>{" "}
-                      {paymentMethodLabel(payment.paymentMethod)}
-                    </p>
+                    <div className="rounded-2xl bg-black/20 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+                        Method
+                        </p>
+                        <p className="mt-1 break-words text-sm font-bold text-white">
+                        {payment.paymentMethod}
+                        </p>
+                    </div>
 
-                    <p>
-                      <span className="font-bold text-white">Reference:</span>{" "}
-                      {payment.transactionReference}
-                    </p>
+                    <div className="rounded-2xl bg-black/20 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+                        Reference
+                        </p>
+                        <p className="mt-1 break-words text-sm font-bold text-white">
+                        {payment.transactionReference}
+                        </p>
+                    </div>
 
-                    <p>
-                      <span className="font-bold text-white">Payer phone:</span>{" "}
-                      {payment.payerPhone || "Not provided"}
-                    </p>
+                    <div className="rounded-2xl bg-black/20 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+                        Payer phone
+                        </p>
+                        <p className="mt-1 break-words text-sm font-bold text-white">
+                        {payment.payerPhone || "Not provided"}
+                        </p>
+                    </div>
 
-                    <p>
-                      <span className="font-bold text-white">Submitted:</span>{" "}
-                      {formatDate(payment.createdAt)}
-                    </p>
+                    <div className="rounded-2xl bg-black/20 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+                        Submitted
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-white">
+                        {new Date(payment.createdAt).toLocaleString("en-ZM")}
+                        </p>
+                    </div>
 
-                    <p>
-                      <span className="font-bold text-white">Job payment:</span>{" "}
-                      {payment.job?.paymentStatus || "Not available"}
-                    </p>
+                    <div className="rounded-2xl bg-black/20 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">
+                        Job payment
+                        </p>
+                        <p className="mt-1 break-words text-sm font-bold text-white">
+                        {payment.job?.paymentStatus || "Not available"}
+                        </p>
+                    </div>
                   </div>
-
+                  
                   {payment.note && (
                     <p className="mt-4 rounded-2xl bg-white/5 p-4 text-sm text-zinc-300">
                       Employer note: {payment.note}

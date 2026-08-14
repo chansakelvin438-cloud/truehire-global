@@ -2,6 +2,7 @@ import express from "express"
 import prisma from "../config/prisma.js"
 import { protect, allowRoles } from "../middleware/authMiddleware.js"
 import { sendPaymentStatusEmail } from "../services/emailService.js"
+import { createAuditLog } from "../services/auditLogServices.js"
 
 const router = express.Router()
 
@@ -126,6 +127,24 @@ router.post(
       await prisma.job.update({
         where: { id: job.id },
         data: {
+          paymentStatus: "PAYMENT_SUBMITTED",
+        },
+      })
+
+      await createAuditLog({
+        req,
+        action: "EMPLOYER_SUBMITTED_PAYMENT",
+        targetType: "PaymentSubmission",
+        targetId: payment.id,
+        description: `Employer submitted payment confirmation for job: ${job.title}`,
+        metadata: {
+          jobId: job.id,
+          jobTitle: job.title,
+          employerId: employerProfile.id,
+          amount: payment.amount,
+          currency: payment.currency,
+          paymentMethod: payment.paymentMethod,
+          transactionReference: payment.transactionReference,
           paymentStatus: "PAYMENT_SUBMITTED",
         },
       })
@@ -302,6 +321,34 @@ router.patch(
           },
         })
       }
+
+      await createAuditLog({
+        req,
+        action:
+          status === "CONFIRMED"
+            ? "ADMIN_CONFIRMED_PAYMENT"
+            : "ADMIN_REJECTED_PAYMENT",
+        targetType: "PaymentSubmission",
+        targetId: payment.id,
+        description:
+          status === "CONFIRMED"
+            ? `Admin confirmed payment for job: ${payment.job?.title || "job advert"}`
+            : `Admin rejected payment for job: ${payment.job?.title || "job advert"}`,
+        metadata: {
+          paymentId: payment.id,
+          jobId: payment.jobId,
+          jobTitle: payment.job?.title,
+          employerId: payment.employerId,
+          amount: payment.amount,
+          currency: payment.currency,
+          paymentMethod: payment.paymentMethod,
+          transactionReference: payment.transactionReference,
+          adminDecision: status,
+          adminNote: cleanText(adminNote),
+          jobPaymentStatus: status === "CONFIRMED" ? "PAID" : "PAYMENT_REJECTED",
+          jobStatus: status === "CONFIRMED" ? "PENDING_REVIEW" : "PENDING_PAYMENT",
+        },
+      })
 
       try {
         if (payment.employer?.user?.email) {
