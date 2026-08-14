@@ -1,6 +1,10 @@
 import express from "express"
 import prisma from "../config/prisma.js"
 import { protect, allowRoles } from "../middleware/authMiddleware.js"
+import {
+  sendNewApplicationEmail,
+  sendApplicationStatusEmail,
+} from "../services/emailService.js"
 
 const router = express.Router()
 
@@ -98,6 +102,13 @@ router.post("/jobs/:jobId", protect, allowRoles("JOB_SEEKER"), async (req, res) 
         id: jobId,
         status: "APPROVED",
       },
+      include: {
+        employer: {
+          include: {
+            user: true,
+          },
+        },
+      },
     })
 
     
@@ -150,6 +161,19 @@ router.post("/jobs/:jobId", protect, allowRoles("JOB_SEEKER"), async (req, res) 
         user: true,
       },
     })
+
+    try {
+      if (job.employer?.user?.email) {
+        await sendNewApplicationEmail({
+          to: job.employer.user.email,
+          employerName: job.employer.companyName || job.employer.user.name,
+          jobTitle: job.title,
+          applicantName: fullName,
+        })
+      }
+    } catch (emailError) {
+      console.error("New application email failed:", emailError)
+    }
 
     res.status(201).json({
       status: "success",
@@ -283,8 +307,12 @@ router.patch(
           },
         },
         include: {
-          job: true,
           user: true,
+          job: {
+            include: {
+              employer: true,
+            },
+          },
         },
       })
 
@@ -307,6 +335,20 @@ router.patch(
           user: true,
         },
       })
+
+      try {
+        if (existingApplication.user?.email) {
+          await sendApplicationStatusEmail({
+            to: existingApplication.user.email,
+            applicantName:
+              existingApplication.fullName || existingApplication.user.name,
+            jobTitle: existingApplication.job?.title || "your job application",
+            status: newStatus,
+          })
+        }
+      } catch (emailError) {
+        console.error("Application status email failed:", emailError)
+      }
 
       await prisma.notification.create({
         data: {
