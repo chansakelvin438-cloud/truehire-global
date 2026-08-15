@@ -29,12 +29,14 @@ import JobPostingPolicy from "./pages/JobPostingPolicy"
 import ScrollToTop from "./components/ScrollToTop"
 import EmployerVerificationPolicy from "./pages/EmployerVerificationPolicy"
 import ApplicantSafetyPolicy from "./pages/ApplicantSafetyPolicy"
+import BackToTopButton from "./components/BackToTopButton"
 
 function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
       <AuthSessionTimeout />
+      <BackToTopButton />
       <Routes>
         <Route path="/" element={<Home />} />
 
