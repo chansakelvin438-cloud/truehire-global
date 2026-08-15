@@ -48,9 +48,9 @@ function EmployerSection() {
 
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-              <p className="text-3xl font-extrabold text-yellow-300">$3</p>
+              <p className="text-3xl font-extrabold text-yellow-300">K50</p>
               <p className="mt-2 text-sm leading-6 text-zinc-400">
-                Future posting fee per advert
+                Post per advert
               </p>
             </div>
 
