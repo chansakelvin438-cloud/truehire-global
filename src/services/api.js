@@ -419,3 +419,7 @@ export function getAdminAuditLogs(params = {}) {
 
   return apiRequest(`/audit-logs/admin${queryString ? `?${queryString}` : ""}`)
 }
+
+export function getAdminAnalytics() {
+  return apiRequest("/analytics/admin")
+}
