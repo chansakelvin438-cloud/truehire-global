@@ -74,20 +74,21 @@ function EmployerSection() {
           <div className="rounded-[1.5rem] border border-white/10 bg-zinc-950 p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-bold uppercase tracking-wide text-teal-300">
-                  Employer Posting Plan
+                <p className="text-sm font-black uppercase tracking-wide text-teal-300">
+                  EMPLOYER POSTING PLAN
                 </p>
 
-                <h3 className="mt-3 text-4xl font-extrabold">
-                  $3{" "}
-                  <span className="text-base font-semibold text-zinc-400">
-                    per job advert
+                <div className="mt-5 flex items-end gap-3">
+                  <span className="text-6xl font-black text-white">K50</span>
+                  <span className="pb-2 text-lg font-bold text-zinc-400">
+                    launch fee per job advert
                   </span>
-                </h3>
+                </div>
 
-                <p className="mt-4 text-sm leading-6 text-zinc-400">
-                  Payment methods will be added later after stronger backend security,
-                  employer verification, and fraud controls are implemented.
+                <p className="mt-6 text-sm leading-7 text-zinc-300">
+                  Manual payment confirmation is active. Employers submit a mobile money or bank
+                  transaction reference, and TrueHire admin confirms payment before the job moves
+                  to review.
                 </p>
               </div>
 

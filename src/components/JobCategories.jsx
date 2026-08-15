@@ -134,24 +134,29 @@ function JobCategories() {
 
         <div className="mt-12 rounded-[2rem] border border-white/10 bg-white/5 p-6 md:p-8">
           <div className="grid gap-6 md:grid-cols-3">
-            <div>
-              <p className="text-3xl font-extrabold text-teal-300">Smart</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-400">
-                Categories help job seekers narrow searches quickly.
+            <div className="rounded-[2rem] border border-white/10 bg-white/5 p-8">
+              <h3 className="text-4xl font-black text-teal-300">
+                Easy
+              </h3>
+              <p className="mt-4 text-sm leading-7 text-zinc-400">
+                Job seekers can browse opportunities by career area and quickly find roles
+                that match their interests.
               </p>
-            </div>
 
-            <div>
-              <p className="text-3xl font-extrabold text-yellow-300">Focused</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-400">
-                Jobs are grouped by career direction and professional area.
+              <h3 className="mt-8 text-4xl font-black text-yellow-300">
+                Organised
+              </h3>
+              <p className="mt-4 text-sm leading-7 text-zinc-400">
+                Jobs are grouped into clear categories such as technology, customer service,
+                procurement, logistics, and remote work.
               </p>
-            </div>
 
-            <div>
-              <p className="text-3xl font-extrabold text-emerald-300">Scalable</p>
-              <p className="mt-2 text-sm leading-6 text-zinc-400">
-                More sectors can be added as TrueHire Global grows.
+              <h3 className="mt-8 text-4xl font-black text-teal-300">
+                Practical
+              </h3>
+              <p className="mt-4 text-sm leading-7 text-zinc-400">
+                Each category helps applicants move directly to relevant job adverts without
+                wasting time.
               </p>
             </div>
           </div>

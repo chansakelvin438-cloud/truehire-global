@@ -83,7 +83,7 @@ function Terms() {
             <TermBlock
               icon={CreditCard}
               title="6. Future employer payments"
-              text="The planned employer posting fee is $3 per job advert. Payments are currently disabled and should only be activated after secure backend payment handling is implemented."
+              text="The planned employer posting fee is $3/post"
             />
 
             <TermBlock

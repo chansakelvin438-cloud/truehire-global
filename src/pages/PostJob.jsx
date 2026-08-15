@@ -433,13 +433,9 @@ function PostJob() {
                   </h2>
 
                   <p className="mt-3 text-sm leading-7 text-zinc-300">
-                    The future employer posting fee is $3 per advert, but payments are
-                    currently disabled.
+                    K50 Launch employer posting fee.
                   </p>
-
-                  <p className="mt-5 rounded-full bg-zinc-950 px-4 py-2 text-center text-sm font-bold text-yellow-300">
-                    Payment Disabled
-                  </p>
+                  
                 </div>
 
                 <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6">

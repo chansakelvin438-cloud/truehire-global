@@ -282,7 +282,7 @@ function AdminDashboard() {
                               </span>
 
                               <span className="rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold text-zinc-300">
-                                {job.paymentStatus || "Payment Disabled"}
+                                {job.paymentStatus || "Manual payment active"}
                               </span>
 
                               <span
@@ -413,7 +413,6 @@ function AdminDashboard() {
                   <ChecklistItem text="Review job description and requirements" />
                   <ChecklistItem text="Reject jobs asking applicants for money" />
                   <ChecklistItem text="Flag suspicious employer details" />
-                  <ChecklistItem text="Keep payment disabled until backend is secure" />
                 </div>
               </div>
 

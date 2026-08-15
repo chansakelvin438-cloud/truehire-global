@@ -130,8 +130,8 @@ function Hero() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-              <p className="text-3xl font-extrabold text-white">$3</p>
-              <p className="mt-2 text-sm text-zinc-400">Future employer posting fee</p>
+              <p className="text-3xl font-extrabold text-white">K50</p>
+              <p className="mt-2 text-sm text-zinc-400">Launch employer posting fee</p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">

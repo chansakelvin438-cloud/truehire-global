@@ -351,7 +351,7 @@ function EmployerDashboard() {
                           </span>
 
                           <span className="rounded-full bg-zinc-800 px-4 py-2 text-center text-xs font-bold text-zinc-300">
-                            {job.paymentStatus || "Payment Disabled"}
+                            {job.paymentStatus || "Manual payment active"}
                           </span>
 
                           {job.status === "Approved" && (
@@ -429,7 +429,7 @@ function EmployerDashboard() {
                   />
                   <ChecklistItem
                     done={true}
-                    text="Keep payment disabled until backend is secure"
+                    text="Manual payment active"
                   />
                 </div>
               </div>

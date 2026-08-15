@@ -103,16 +103,12 @@ function Employers() {
                     </p>
 
                     <h2 className="mt-3 text-5xl font-extrabold">
-                      $3{" "}
+                      K50{" "}
                       <span className="text-base font-semibold text-zinc-400">
                         per advert
                       </span>
                     </h2>
 
-                    <p className="mt-4 text-sm leading-7 text-zinc-400">
-                      This is the future posting fee. Payments are currently disabled
-                      until backend security, fraud checks, and payment handling are ready.
-                    </p>
                   </div>
 
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-yellow-400 text-zinc-950">
@@ -129,11 +125,15 @@ function Employers() {
                   ))}
                 </div>
 
-                <div className="mt-8 rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-5">
-                  <h3 className="font-bold text-yellow-300">Payment disabled</h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-300">
-                    Employers can test posting and verification now, but real payments
-                    will be added only after the secure backend is built.
+                <div className="mt-8 rounded-3xl border border-yellow-400/30 bg-yellow-400/10 p-6">
+                  <h3 className="text-xl font-black text-yellow-300">
+                    Manual payment active
+                  </h3>
+
+                  <p className="mt-3 text-sm leading-7 text-zinc-300">
+                    Employers can currently post job adverts and submit payment references
+                    manually. TrueHire admin confirms or rejects each payment before the job
+                    moves to review.
                   </p>
                 </div>
               </div>
