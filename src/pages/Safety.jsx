@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
+import Seo from "../components/Seo"
 
 function Safety() {
   const redFlags = [
@@ -31,6 +32,11 @@ function Safety() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+      <Seo
+        title="Applicant Safety Centre"
+        description="Learn how TrueHire Global reviews job adverts, discourages recruitment fees, and helps users report suspicious job posts."
+        path="/safety"
+      />
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-20">

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
 import { CheckCircle, ShieldCheck, Star, Zap, Building2 } from "lucide-react"
+import Seo from "../components/Seo"
 
 const pricingPlans = [
   {
@@ -79,6 +80,11 @@ const pricingPlans = [
 export default function Pricing() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
+      <Seo
+        title="Employer Pricing"
+        description="View TrueHire Global employer posting pricing, manual payment confirmation, and job advert review process."
+        path="/pricing"
+      />
       <Navbar />
 
       <section className="px-6 py-20">

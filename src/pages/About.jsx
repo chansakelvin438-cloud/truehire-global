@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
+import Seo from "../components/Seo"
 
 function About() {
   const values = [
@@ -42,6 +43,11 @@ function About() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+      <Seo
+        title="About TrueHire Global"
+        description="Learn about TrueHire Global, a Chansa Enterprises platform built to support safer hiring and trusted employer visibility."
+        path="/about"
+      />
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-20">

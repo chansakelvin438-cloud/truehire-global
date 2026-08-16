@@ -19,6 +19,74 @@ import {
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
 import { getPublicBackendJob } from "../services/api"
+import Seo from "../components/Seo"
+
+function stripHtml(value) {
+  return String(value || "").replace(/<[^>]*>/g, "").trim()
+}
+
+function toIsoDate(value) {
+  if (!value) return undefined
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return undefined
+  }
+
+  return date.toISOString()
+}
+
+function buildJobPostingJsonLd(job) {
+  if (!job) return null
+
+  const description = `
+    <p>${stripHtml(job.description || "Job opportunity listed on TrueHire Global.")}</p>
+    <p><strong>Requirements:</strong> ${stripHtml(job.requirements || "See job advert for requirements.")}</p>
+    <p><strong>Experience:</strong> ${stripHtml(job.experience || "Not specified.")}</p>
+  `
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    title: job.title,
+    description,
+    datePosted: toIsoDate(job.createdAt),
+    validThrough: toIsoDate(job.deadline),
+    employmentType: String(job.type || "FULL_TIME").toUpperCase().replaceAll(" ", "_"),
+    hiringOrganization: {
+      "@type": "Organization",
+      name: job.company || "Verified Employer",
+    },
+    jobLocation: {
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: job.location || "Zambia",
+        addressCountry: "ZM",
+      },
+    },
+    identifier: {
+      "@type": "PropertyValue",
+      name: "TrueHire Global",
+      value: job.id,
+    },
+  }
+
+  if (job.companyLogo) {
+    jsonLd.hiringOrganization.logo = job.companyLogo
+  }
+
+  if (String(job.type || "").toLowerCase().includes("remote")) {
+    jsonLd.jobLocationType = "TELECOMMUTE"
+    jsonLd.applicantLocationRequirements = {
+      "@type": "Country",
+      name: "Zambia",
+    }
+  }
+
+  return jsonLd
+}
 
 function JobDetails() {
   const { id } = useParams()
@@ -93,6 +161,16 @@ function JobDetails() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+      <Seo
+        title={job ? `${job.title} at ${job.company}` : "Job Details"}
+        description={
+          job
+            ? `${job.title} at ${job.company} in ${job.location}. Apply through TrueHire Global.`
+            : "View verified job details on TrueHire Global."
+        }
+        path={job ? `/jobs/${job.id}` : "/jobs"}
+        jsonLd={buildJobPostingJsonLd(job)}
+      />
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-20">

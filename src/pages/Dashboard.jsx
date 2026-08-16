@@ -17,6 +17,7 @@ import Footer from "../components/Footer"
 import ApplicationHistory from "../components/ApplicationHistory"
 import NotificationsPanel from "../components/NotificationsPanel"
 import { getPublicJobs } from "../data/jobs"
+import Seo from "../components/Seo"
 
 function Dashboard() {
   const [savedJobIds, setSavedJobIds] = useState([])
@@ -189,6 +190,7 @@ function Dashboard() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+      <Seo title="Job Seeker Dashboard" path="/dashboard" noIndex />
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-20">

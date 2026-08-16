@@ -17,6 +17,7 @@ import Footer from "../components/Footer"
 import EmployerApplicationsPanel from "../components/EmployerApplicationsPanel"
 import { getMyEmployerJobs } from "../services/api"
 import EmployerPaymentsPanel from "../components/EmployerPaymentsPanel"
+import Seo from "../components/Seo"
 
 function EmployerDashboard() {
   const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
@@ -95,6 +96,7 @@ function EmployerDashboard() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+      <Seo title="Employer Dashboard" path="/employer-dashboard" noIndex />
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-20">

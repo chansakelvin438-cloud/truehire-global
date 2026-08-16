@@ -15,6 +15,7 @@ import {
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
 import { getPublicBackendJob, submitSafetyReport } from "../services/api"
+import Seo from "../components/Seo"
 
 function Contact() {
   const [searchParams] = useSearchParams()
@@ -112,6 +113,11 @@ function Contact() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+      <Seo
+        title="Contact Support"
+        description="Contact TrueHire Global support, ask questions, or report suspicious job adverts."
+        path="/contact"
+      />
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-20">

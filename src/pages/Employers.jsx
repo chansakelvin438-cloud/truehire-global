@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
+import Seo from "../components/Seo"
 
 function Employers() {
   const benefits = [
@@ -51,6 +52,11 @@ function Employers() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+      <Seo
+        title="Post Verified Job Adverts"
+        description="TrueHire Global helps employers post reviewed job adverts, build trust through verification, and receive applications from job seekers."
+        path="/employers"
+      />
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-20">

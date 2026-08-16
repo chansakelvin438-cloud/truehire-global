@@ -14,6 +14,7 @@ import {
 import Navbar from "../components/Navbar"
 import Footer from "../components/Footer"
 import { getPublicBackendJobs } from "../services/api"
+import Seo from "../components/Seo"
 
 function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -91,6 +92,11 @@ function Jobs() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+      <Seo
+        title="Browse Verified Jobs"
+        description="Browse reviewed job adverts from employers on TrueHire Global. Find safer opportunities across Zambia, Africa, and remote markets."
+        path="/jobs"
+      />
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-20">

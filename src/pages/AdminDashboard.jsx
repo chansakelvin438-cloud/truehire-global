@@ -21,6 +21,7 @@ import EmployerVerificationPanel from "../components/EmployerVerificationPanel"
 
 import { getAdminJobs, updateAdminJobStatus } from "../services/api"
 import AdminLaunchChecklistPanel from "../components/AdminLaunchChecklistPanel"
+import Seo from "../components/Seo"
 
 const adminSections = [
   { id: "analytics", label: "Analytics" },
@@ -182,6 +183,7 @@ export default function AdminDashboard() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+      <Seo title="Admin Dashboard" path="/admin-dashboard" noIndex />
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-20">
