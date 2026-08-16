@@ -423,3 +423,14 @@ export function getAdminAuditLogs(params = {}) {
 export function getAdminAnalytics() {
   return apiRequest("/analytics/admin")
 }
+
+export function getAdminLaunchChecklist() {
+  return apiRequest("/launch-checklist/admin")
+}
+
+export function updateAdminLaunchChecklistItem(key, data) {
+  return apiRequest(`/launch-checklist/admin/${key}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  })
+}

@@ -9,7 +9,7 @@ import {
   rejectDangerousInput,
 } from "../utils/validation.js"
 import { sendJobStatusEmail } from "../services/emailService.js"
-import { createAuditLog } from "../services/auditLogServices.js"
+import { createAuditLog } from "../services/auditLogService.js"
 
 const router = express.Router()
 

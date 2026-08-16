@@ -5,7 +5,7 @@ import {
   sendNewApplicationEmail,
   sendApplicationStatusEmail,
 } from "../services/emailService.js"
-import { createAuditLog } from "../services/auditLogServices.js"
+import { createAuditLog } from "../services/auditLogService.js"
 
 const router = express.Router()
 

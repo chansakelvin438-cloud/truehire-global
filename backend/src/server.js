@@ -18,6 +18,7 @@ import fileRoutes from "./routes/fileRoutes.js"
 import paymentRoutes from "./routes/paymentRoutes.js"
 import auditLogRoutes from "./routes/auditLogRoutes.js"
 import analyticsRoutes from "./routes/analyticsRoutes.js"
+import launchChecklistRoutes from "./routes/launchChecklistRoutes.js"
 
 dotenv.config()
 
@@ -171,6 +172,7 @@ app.use("/api/jobs", jobRoutes)
 app.use("/api/applications", applicationRoutes)
 app.use("/api/payments", paymentRoutes)
 app.use("/api/audit-logs", auditLogRoutes)
+app.use("/api/launch-checklist", launchChecklistRoutes)
 app.use("/api/analytics", analyticsRoutes)
 app.use("/api/notifications", notificationRoutes)
 app.use("/api/employer-verifications", employerVerificationRoutes)

@@ -20,9 +20,11 @@ import AdminAuditLogPanel from "../components/AdminAuditLogPanel"
 import EmployerVerificationPanel from "../components/EmployerVerificationPanel"
 
 import { getAdminJobs, updateAdminJobStatus } from "../services/api"
+import AdminLaunchChecklistPanel from "../components/AdminLaunchChecklistPanel"
 
 const adminSections = [
   { id: "analytics", label: "Analytics" },
+  { id: "launch", label: "Checklist" },
   { id: "payments", label: "Payment Confirmation" },
   { id: "jobs", label: "Job Review" },
   { id: "verification", label: "Employer Verification" },
@@ -225,6 +227,8 @@ export default function AdminDashboard() {
 
           <div className="mt-8">
             {activeAdminSection === "analytics" && <AdminAnalyticsPanel />}
+
+            {activeAdminSection === "launch" && <AdminLaunchChecklistPanel />}
 
             {activeAdminSection === "payments" && <AdminPaymentsPanel />}
 

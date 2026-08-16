@@ -2,7 +2,7 @@ import express from "express"
 import prisma from "../config/prisma.js"
 import { protect, allowRoles } from "../middleware/authMiddleware.js"
 import { sendPaymentStatusEmail } from "../services/emailService.js"
-import { createAuditLog } from "../services/auditLogServices.js"
+import { createAuditLog } from "../services/auditLogService.js"
 
 const router = express.Router()
 
