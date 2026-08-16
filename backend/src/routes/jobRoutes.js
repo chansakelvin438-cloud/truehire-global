@@ -10,6 +10,10 @@ import {
 } from "../utils/validation.js"
 import { sendJobStatusEmail } from "../services/emailService.js"
 import { createAuditLog } from "../services/auditLogService.js"
+import {
+  notifyGoogleJobDeleted,
+  notifyGoogleJobUpdated,
+} from "../services/googleIndexingService.js"
 
 const router = express.Router()
 
@@ -693,6 +697,20 @@ router.patch("/:jobId/status", protect, allowRoles("ADMIN"), async (req, res) =>
       }
     } catch (emailError) {
       console.error("Job status email failed:", emailError)
+    }
+
+    try {
+      if (requestedStatus === "APPROVED") {
+        const indexingResult = await notifyGoogleJobUpdated(existingJob.id)
+        console.log("Google indexing update notification:", indexingResult)
+      }
+
+      if (requestedStatus === "REJECTED" || requestedStatus === "FLAGGED") {
+        const indexingResult = await notifyGoogleJobDeleted(existingJob.id)
+        console.log("Google indexing delete notification:", indexingResult)
+      }
+    } catch (indexingError) {
+      console.error("Google indexing notification failed:", indexingError.message)
     }
 
     res.json({
