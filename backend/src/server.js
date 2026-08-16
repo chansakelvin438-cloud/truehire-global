@@ -19,6 +19,7 @@ import paymentRoutes from "./routes/paymentRoutes.js"
 import auditLogRoutes from "./routes/auditLogRoutes.js"
 import analyticsRoutes from "./routes/analyticsRoutes.js"
 import launchChecklistRoutes from "./routes/launchChecklistRoutes.js"
+import sitemapRoutes from "./routes/sitemapRoutes.js"
 
 dotenv.config()
 
@@ -157,6 +158,7 @@ app.get("/", (req, res) => {
     message: "TrueHire Global API is running securely.",
   })
 })
+app.use("/", sitemapRoutes)
 
 app.get("/api/health", (req, res) => {
   res.json({
